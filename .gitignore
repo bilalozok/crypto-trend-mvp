@@ -27,3 +27,4 @@ venv/
 # IDE
 .vscode/
 .idea/
+app.db.bak
