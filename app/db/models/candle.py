@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, String, BigInteger, Float, UniqueConstraint
-from app.db.session import Base
+from sqlalchemy import BigInteger, Column, Float, Integer, String, UniqueConstraint
+
+from app.db.base import Base
 
 
 class Candle(Base):
@@ -8,8 +9,7 @@ class Candle(Base):
     id = Column(Integer, primary_key=True, index=True)
     symbol = Column(String, index=True, nullable=False)
     interval = Column(String, index=True, nullable=False)
-    open_time = Column(BigInteger, index=True, nullable=False)
-
+    open_time = Column(BigInteger, index=True, nullable=False)  # ms epoch
     open = Column(Float, nullable=False)
     high = Column(Float, nullable=False)
     low = Column(Float, nullable=False)
@@ -17,5 +17,10 @@ class Candle(Base):
     volume = Column(Float, nullable=False)
 
     __table_args__ = (
-        UniqueConstraint("symbol", "interval", "open_time", name="uq_candles_symbol_interval_open_time"),
+        UniqueConstraint(
+            "symbol",
+            "interval",
+            "open_time",
+            name="uq_candles_symbol_interval_open_time",
+        ),
     )
