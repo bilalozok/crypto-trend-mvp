@@ -71,3 +71,28 @@ def test_fetch_idempotent_with_same_mock_data(client):
         elif "created" in d2:
             assert d2["created"] == 0
         # hiçbiri yoksa bile endpoint en azından başarılı dönmeli (yukarıda doğrulandı)
+import requests
+
+
+def test_fetch_handles_429_rate_limit(client):
+    target = _resolve_patch_target()
+
+    mock_resp = Mock()
+    mock_resp.status_code = 429
+    mock_resp.json.return_value = {"code": -1003, "msg": "Too many requests."}
+    mock_resp.raise_for_status.side_effect = requests.HTTPError("429 Too Many Requests")
+
+    with patch(target, return_value=mock_resp):
+        r = client.post("/candles/fetch/BTCUSDT?interval=1m&limit=2")
+
+        # Projeye göre davranış değişebilir:
+        # - 429'u upstream olarak yansıtabilir (429)
+        # - Bad Gateway/Service Unavailable'a mapleyebilir (502/503)
+        # - Genel hata (500) olabilir
+        assert r.status_code in (429, 500, 502, 503), r.text
+
+        # Hata gövdesinde mesaj beklentisi (esnek)
+        body = r.json()
+        assert isinstance(body, dict)
+        text = str(body).lower()
+        assert ("429" in text) or ("too many requests" in text) or ("rate" in text) or ("limit" in text)
