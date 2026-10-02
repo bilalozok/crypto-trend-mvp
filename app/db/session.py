@@ -16,10 +16,5 @@ DATABASE_URL = normalize_database_url(os.getenv("DATABASE_URL", "sqlite:///./cry
 
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 
-engine = create_engine(
-    DATABASE_URL,
-    pool_pre_ping=True,
-    connect_args=connect_args,
-)
-
+engine = create_engine(DATABASE_URL, pool_pre_ping=True, connect_args=connect_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

@@ -1,5 +1,6 @@
 import os
 import tempfile
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -8,8 +9,9 @@ tmp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
 os.environ["DATABASE_URL"] = f"sqlite:///{tmp_db.name}"
 
 # app importu ENV set edildikten sonra
+from app.db.base import Base  # noqa: E402
+from app.db.session import engine  # noqa: E402
 from app.main import app  # noqa: E402
-from app.db.session import Base, engine  # noqa: E402
 
 
 @pytest.fixture(scope="session", autouse=True)
