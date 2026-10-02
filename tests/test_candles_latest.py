@@ -1,11 +1,32 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 
-def _to_dt(v: str) -> datetime:
-    # FastAPI çoğu zaman ISO döner. "Z" varsa +00:00'a çevir.
-    if v.endswith("Z"):
-        v = v[:-1] + "+00:00"
-    return datetime.fromisoformat(v)
+def _to_dt(v):
+    """
+    open_time farklı formatlarda gelebilir:
+    - int/float: epoch (ms veya s)
+    - str: ISO datetime (Z olabilir) veya sayısal string epoch
+    """
+    if isinstance(v, (int, float)):
+        # Büyükse ms kabul et
+        ts = v / 1000 if v > 10_000_000_000 else v
+        return datetime.fromtimestamp(ts, tz=timezone.utc)
+
+    if isinstance(v, str):
+        vv = v.strip()
+
+        # sayısal string ise epoch kabul et
+        if vv.isdigit():
+            n = int(vv)
+            ts = n / 1000 if n > 10_000_000_000 else n
+            return datetime.fromtimestamp(ts, tz=timezone.utc)
+
+        # ISO string
+        if vv.endswith("Z"):
+            vv = vv[:-1] + "+00:00"
+        return datetime.fromisoformat(vv)
+
+    raise TypeError(f"Unsupported open_time type: {type(v)} value={v}")
 
 
 def test_latest_supports_sort_asc_desc(client):
