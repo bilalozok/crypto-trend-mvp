@@ -1,187 +1,228 @@
 # Crypto Trend MVP
 
-FastAPI + SQLAlchemy tabanlı, kripto mum (candlestick) verilerini yerel veritabanından okuyup API ile sunan MVP proje.
+[![CI](https://github.com/bilalozok/crypto-trend-mvp/actions/workflows/ci.yml/badge.svg)](https://github.com/bilalozok/crypto-trend-mvp/actions/workflows/ci.yml)
+
+Basit bir **FastAPI + SQLite** tabanlı kripto mum verisi (candles) servisi.
+Amaç: veri çekme, saklama, son kayıtları listeleme ve test/lint/CI disiplinini oturtmak.
+
+---
 
 ## Özellikler
 
-- FastAPI ile REST API
-- SQLAlchemy ORM ile veritabanı erişimi
-- Sembol/interval bazlı son mumları çekme
-- Basit debug endpoint’leri
-- Swagger UI (`/docs`) ile interaktif test
+- FastAPI REST API
+- SQLAlchemy ile SQLite persistency
+- Candle modelinde `UniqueConstraint` ile mükerrer kayıt koruması
+- Fetch işlemlerinde idempotent davranış (`skipped_existing`)
+- Listeleme endpoint’inde:
+  - `limit`
+  - `offset`
+  - `sort`
+  - filtreleme parametreleri
+- Pytest + httpx ile testler
+- Ruff + Black ile kod kalitesi
+- GitHub Actions CI (test + lint)
+- pre-commit hook’ları
 
 ---
 
 ## Proje Yapısı
 
 ```text
-crypto-trend-mvp/
-├─ app/
-│  ├─ db/
-│  │  ├─ models/
-│  │  │  └─ candle.py
-│  │  └─ session.py
-│  └─ main.py
-├─ requirements.txt
-└─ README.md
+.
+├── app/
+│   ├── db/
+│   ├── models/
+│   ├── routers/
+│   └── main.py
+├── tests/
+├── .github/workflows/ci.yml
+├── Makefile
+├── requirements.txt
+├── requirements-dev.txt
+└── .pre-commit-config.yaml
 ```
+
+---
+
+## Gereksinimler
+
+- Python 3.11+ (lokalde 3.12 de çalışır)
+- pip
+- (Opsiyonel) make
 
 ---
 
 ## Kurulum
 
-### 1) Depoyu klonla
 ```bash
-git clone git@github.com:bilalozok/crypto-trend-mvp.git
+git clone https://github.com/bilalozok/crypto-trend-mvp.git
 cd crypto-trend-mvp
-```
 
-### 2) Sanal ortam oluştur/aktif et
-```bash
 python3 -m venv .venv
 source .venv/bin/activate
+
+pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
 
-### 3) Bağımlılıkları yükle
+---
+
+## Ortam Değişkenleri
+
+`.env.example` dosyasını referans al:
+
 ```bash
-pip install -r requirements.txt
+cp .env.example .env
 ```
+
+Örnek:
+
+```env
+DATABASE_URL=sqlite:///./crypto_trend.db
+```
+
+> Not: Uygulama `DATABASE_URL` üzerinden bağlanır.
 
 ---
 
 ## Uygulamayı Çalıştırma
 
 ```bash
-python -m uvicorn app.main:app --reload --reload-dir app --port 8000
+make run
 ```
 
-Uygulama açıldıktan sonra:
+Uygulama varsayılan olarak:
 
-- Swagger UI: `http://127.0.0.1:8000/docs`
-- ReDoc: `http://127.0.0.1:8000/redoc`
+- API: `http://127.0.0.1:8010`
+- Swagger UI: `http://127.0.0.1:8010/docs`
+- ReDoc: `http://127.0.0.1:8010/redoc`
 
-> Eğer `Address already in use` hatası alırsan:
+---
+
+## API Endpointleri
+
+### Health / Root
+
+- `GET /`
+
+### Veri Çekme
+
+- `POST /candles/fetch/{symbol}`
+
+Örnek:
+
 ```bash
-lsof -ti:8000 | xargs kill -9
-```
-ve tekrar çalıştır.
-
----
-
-## Endpointler
-
-## 1) Health Check
-### `GET /`
-API’nin ayakta olup olmadığını kontrol eder.
-
-**Örnek cevap**
-```json
-{
-  "message": "API ayakta 🚀"
-}
+curl -X POST "http://127.0.0.1:8010/candles/fetch/BTCUSDT"
 ```
 
----
+### Son Mumları Listeleme
 
-## 2) Son mumları getir (filtreli)
-### `GET /candles/latest`
+- `GET /candles/latest`
+- `GET /candles/latest_raw`
 
-Belirli bir `symbol` ve `interval` için en güncel mum kayıtlarını döner.
+Örnek:
 
-### Query Parametreleri
-
-- `symbol` (zorunlu, string)
-  Örnek: `BTCUSDT`
-- `interval` (opsiyonel, string, varsayılan: `1h`)
-- `limit` (opsiyonel, integer, varsayılan: `5`, min: `1`, max: `500`)
-
-**Örnek istek**
-```text
-GET /candles/latest?symbol=BTCUSDT&interval=1h&limit=5
-```
-
-**Örnek cevap**
-```json
-[
-  {
-    "id": 101,
-    "symbol": "BTCUSDT",
-    "interval": "1h",
-    "open_time": 1727443200000,
-    "open": 64000.5,
-    "high": 64210.0,
-    "low": 63850.2,
-    "close": 64120.7,
-    "volume": 1234.56
-  }
-]
-```
-
----
-
-## 3) Ham son kayıtlar
-### `GET /candles/latest_raw`
-
-Filtre uygulamadan, veritabanındaki en güncel kayıtları döner.
-
-### Query Parametreleri
-
-- `limit` (opsiyonel, integer, varsayılan: `5`)
-
-**Örnek istek**
-```text
-GET /candles/latest_raw?limit=5
-```
-
----
-
-## 4) Veritabanı debug
-### `GET /debug/db`
-
-Toplam kayıt sayısını ve en güncel örnek kaydı döner.
-
-**Örnek cevap**
-```json
-{
-  "count": 2500,
-  "sample": {
-    "id": 2500,
-    "symbol": "BTCUSDT",
-    "interval": "1h",
-    "open_time": 1727443200000,
-    "open": 64000.5,
-    "high": 64210.0,
-    "low": 63850.2,
-    "close": 64120.7,
-    "volume": 1234.56
-  }
-}
-```
-
----
-
-## Kullanışlı Geliştirici Komutları
-
-## Import kontrolü
 ```bash
-python3 -c "from app.main import app; print('MAIN OK')"
+curl "http://127.0.0.1:8010/candles/latest?symbol=BTCUSDT&limit=20&offset=0&sort=desc"
 ```
 
-## Çalışan uvicorn süreçlerini kapatma (port 8000)
+### DB Debug
+
+- `GET /debug/db`
+
+---
+
+## Geliştirme Komutları
+
+### Test
+
 ```bash
-lsof -ti:8000 | xargs kill -9
+make test
+```
+
+### Lint
+
+```bash
+make lint
+```
+
+### Format
+
+```bash
+make format
+```
+
+### Toplu Kontrol (lint + test)
+
+```bash
+make check
 ```
 
 ---
 
-## Notlar
+## pre-commit
 
-- `symbol` filtrelemesi endpoint içinde `upper()` ile yapılır. (`btcusdt` gönderilse de `BTCUSDT` olarak aranır.)
-- Bu sürümde veri çekme (fetch) endpoint’i henüz ekli değil; mevcut yapı veritabanında bulunan mumları servis eder.
-- Sonraki adım olarak Binance entegrasyonu ile `POST /candles/fetch/{symbol}` eklenebilir.
+Kurulum:
+
+```bash
+make precommit-install
+```
+
+Tüm dosyalarda çalıştırma:
+
+```bash
+make precommit-run
+```
+
+Aktif hook’lar:
+
+- `end-of-file-fixer`
+- `trailing-whitespace`
+- `check-yaml`
+- `ruff`
+- `ruff-format`
+- `black`
+
+---
+
+## CI
+
+GitHub Actions pipeline:
+
+- **test job**: `pytest`
+- **lint job**: `ruff` + `black --check`
+
+Dosya: `.github/workflows/ci.yml`
+
+---
+
+## Sık Karşılaşılan Durumlar
+
+### Port doluysa
+
+```bash
+lsof -ti:8000,8010 | xargs kill -9
+```
+
+### Black check fail olursa
+
+```bash
+make format
+make check
+```
+
+---
+
+## Roadmap
+
+- README örneklerini genişletme
+- Deploy (Railway/Render) opsiyonu
+- Fetch endpoint’i için timeout/connection error negatif testleri
+- pre-commit ve kalite kapılarını daha da sıkılaştırma
+- Pydantic v2 `model_config` geçiş temizliği
 
 ---
 
 ## Lisans
 
-Bu proje MVP/demo amaçlıdır. Lisans ihtiyacına göre güncellenebilir.
+Bu proje öğrenme/deneme amaçlı MVP çalışmasıdır.
