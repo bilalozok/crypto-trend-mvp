@@ -90,7 +90,7 @@ Belirli bir `symbol` ve `interval` için en güncel mum kayıtlarını döner.
 
 ### Query Parametreleri
 
-- `symbol` (zorunlu, string)  
+- `symbol` (zorunlu, string)
   Örnek: `BTCUSDT`
 - `interval` (opsiyonel, string, varsayılan: `1h`)
 - `limit` (opsiyonel, integer, varsayılan: `5`, min: `1`, max: `500`)
