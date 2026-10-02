@@ -17,18 +17,14 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
-          cache-dependency-path: requirements.txt
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip setuptools wheel
-          pip install -r requirements.txt
-          pip install httpx pytest
-          python - <<'PY'
-          import importlib.util
-          print("httpx installed:", importlib.util.find_spec("httpx") is not None)
-          print("pytest installed:", importlib.util.find_spec("pytest") is not None)
-          PY
+          pip install -r requirements-dev.txt
 
       - name: Run tests
         env:
