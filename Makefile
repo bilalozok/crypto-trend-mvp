@@ -1,4 +1,4 @@
-.PHONY: install install-dev run test lint format check ci
+.PHONY: install install-dev run test lint format check ci precommit-install precommit-run
 
 install:
 	python -m pip install --upgrade pip
@@ -25,3 +25,9 @@ format:
 check: lint test
 
 ci: install-dev check
+
+precommit-install:
+	pre-commit install
+
+precommit-run:
+	pre-commit run --all-files

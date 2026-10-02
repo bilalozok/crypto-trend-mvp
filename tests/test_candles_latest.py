@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 def _to_dt(v):
@@ -7,10 +7,10 @@ def _to_dt(v):
     - int/float: epoch (ms veya s)
     - str: ISO datetime (Z olabilir) veya sayısal string epoch
     """
-    if isinstance(v, (int, float)):
+    if isinstance(v, int | float):
         # Büyükse ms kabul et
         ts = v / 1000 if v > 10_000_000_000 else v
-        return datetime.fromtimestamp(ts, tz=timezone.utc)
+        return datetime.fromtimestamp(ts, tz=UTC)
 
     if isinstance(v, str):
         vv = v.strip()
@@ -19,7 +19,7 @@ def _to_dt(v):
         if vv.isdigit():
             n = int(vv)
             ts = n / 1000 if n > 10_000_000_000 else n
-            return datetime.fromtimestamp(ts, tz=timezone.utc)
+            return datetime.fromtimestamp(ts, tz=UTC)
 
         # ISO string
         if vv.endswith("Z"):
