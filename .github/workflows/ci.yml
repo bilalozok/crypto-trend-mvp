@@ -11,32 +11,38 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: "pip"
           cache-dependency-path: requirements.txt
 
-      - name: Debug environment
+      - name: Install deps
         run: |
           python -V
-          pip -V
-          pwd
-          ls -la
-          test -f requirements.txt && echo "requirements.txt OK"
-
-      - name: Install dependencies
-        run: |
           python -m pip install --upgrade pip setuptools wheel
           pip install -r requirements.txt
           pip install pytest
+          pip freeze | sed -n '1,120p'
 
-      - name: Run tests
+      - name: Debug files
+        run: |
+          pwd
+          ls -la
+          find . -maxdepth 3 -type f | sed -n '1,200p'
+          echo "----- pytest.ini -----"
+          (cat pytest.ini || true)
+          echo "----- pyproject.toml -----"
+          (cat pyproject.toml || true)
+
+      - name: Pytest collect only
+        run: |
+          python -m pytest --collect-only -q tests
+
+      - name: Run tests verbose
         env:
           PYTHONUNBUFFERED: "1"
         run: |
-          python -m pytest tests -q -ra
+          python -m pytest tests -vv -ra -s
