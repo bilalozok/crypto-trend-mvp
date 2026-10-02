@@ -1,4 +1,5 @@
-from typing import List
+from sqlalchemy import select
+from typing import Optional, Literal,  List
 import requests
 from fastapi import FastAPI, Depends, Query, HTTPException
 from pydantic import BaseModel
@@ -38,24 +39,53 @@ def root():
     return {"status": "ok"}
 
 
-@app.get("/candles/latest", response_model=List[CandleOut])
+@app.get(
+    "/candles/latest",
+    summary="Son mum verilerini listeler",
+    description=(
+        "Mum verilerini symbol/interval filtreleriyle getirir. "
+        "open_time alanına göre asc/desc sıralama ve limit/offset pagination destekler."
+    ),
+)
 def get_latest_candles(
-    symbol: str = Query(..., description="örn: BTCUSDT"),
-    interval: str = Query("1h"),
-    limit: int = Query(5, ge=1, le=500),
+    symbol: Optional[str] = Query(
+        default=None,
+        description="Sembol filtresi (örn: BTCUSDT)"
+    ),
+    interval: Optional[str] = Query(
+        default=None,
+        description="Interval filtresi (örn: 1m, 5m, 1h)"
+    ),
+    limit: int = Query(
+        default=100,
+        ge=1,
+        le=1000,
+        description="Dönecek kayıt sayısı (1-1000, varsayılan: 100)"
+    ),
+    offset: int = Query(
+        default=0,
+        ge=0,
+        description="Atlanacak kayıt sayısı (varsayılan: 0)"
+    ),
+    sort: Literal["asc", "desc"] = Query(
+        default="desc",
+        description="open_time sıralama yönü: asc | desc (varsayılan: desc)"
+    ),
     db: Session = Depends(get_db),
 ):
-    rows = (
-        db.query(Candle)
-        .filter(
-            Candle.symbol == symbol.upper().strip(),
-            Candle.interval == interval.strip(),
-        )
-        .order_by(Candle.open_time.desc())
-        .limit(limit)
-        .all()
-    )
+    q = select(Candle)
+
+    if symbol:
+        q = q.where(Candle.symbol == symbol.upper())
+    if interval:
+        q = q.where(Candle.interval == interval)
+
+    q = q.order_by(Candle.open_time.asc() if sort == "asc" else Candle.open_time.desc())
+    q = q.offset(offset).limit(limit)
+
+    rows = db.execute(q).scalars().all()
     return rows
+
 
 
 @app.get("/candles/latest_raw")

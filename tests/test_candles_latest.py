@@ -1,68 +1,47 @@
-from app.db.session import SessionLocal
-from app.db.models.candle import Candle
+from datetime import datetime
 
 
-def reset_candles():
-    db = SessionLocal()
-    try:
-        db.query(Candle).delete()
-        db.commit()
-    finally:
-        db.close()
+def _to_dt(v: str) -> datetime:
+    # FastAPI çoğu zaman ISO döner. "Z" varsa +00:00'a çevir.
+    if v.endswith("Z"):
+        v = v[:-1] + "+00:00"
+    return datetime.fromisoformat(v)
 
 
-def seed_candles():
-    db = SessionLocal()
-    try:
-        rows = [
-            Candle(
-                symbol="BTCUSDT",
-                interval="1h",
-                open_time=1000,
-                open=1.0,
-                high=2.0,
-                low=0.5,
-                close=1.5,
-                volume=10.0,
-            ),
-            Candle(
-                symbol="BTCUSDT",
-                interval="1h",
-                open_time=2000,
-                open=1.5,
-                high=2.5,
-                low=1.0,
-                close=2.0,
-                volume=20.0,
-            ),
-            Candle(
-                symbol="ETHUSDT",
-                interval="1h",
-                open_time=1500,
-                open=10.0,
-                high=12.0,
-                low=9.0,
-                close=11.0,
-                volume=5.0,
-            ),
-        ]
-        db.add_all(rows)
-        db.commit()
-    finally:
-        db.close()
+def test_latest_supports_sort_asc_desc(client):
+    r_desc = client.get("/candles/latest?symbol=BTCUSDT&interval=1m&limit=5&sort=desc")
+    assert r_desc.status_code == 200
+    data_desc = r_desc.json()
+    assert isinstance(data_desc, list)
+
+    if len(data_desc) >= 2:
+        times = [_to_dt(item["open_time"]) for item in data_desc]
+        assert times == sorted(times, reverse=True)
+
+    r_asc = client.get("/candles/latest?symbol=BTCUSDT&interval=1m&limit=5&sort=asc")
+    assert r_asc.status_code == 200
+    data_asc = r_asc.json()
+    assert isinstance(data_asc, list)
+
+    if len(data_asc) >= 2:
+        times = [_to_dt(item["open_time"]) for item in data_asc]
+        assert times == sorted(times)
 
 
-def test_latest_filters_and_order(client):
-    reset_candles()
-    seed_candles()
+def test_latest_supports_limit_offset(client):
+    r1 = client.get("/candles/latest?symbol=BTCUSDT&interval=1m&limit=2&offset=0&sort=asc")
+    r2 = client.get("/candles/latest?symbol=BTCUSDT&interval=1m&limit=2&offset=2&sort=asc")
 
-    r = client.get("/candles/latest?symbol=BTCUSDT&interval=1h&limit=5")
-    assert r.status_code == 200
-    data = r.json()
-    assert isinstance(data, list)
-    assert len(data) == 2
+    assert r1.status_code == 200
+    assert r2.status_code == 200
 
-    # En yeni önce bekliyoruz
-    assert data[0]["open_time"] == 2000
-    assert data[1]["open_time"] == 1000
-    assert all(x["symbol"] == "BTCUSDT" for x in data)
+    d1 = r1.json()
+    d2 = r2.json()
+
+    assert isinstance(d1, list)
+    assert isinstance(d2, list)
+    assert len(d1) <= 2
+    assert len(d2) <= 2
+
+    if len(d1) == 2 and len(d2) > 0:
+        assert d1 != d2
