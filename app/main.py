@@ -1,12 +1,13 @@
-from sqlalchemy import select
-from typing import Optional, Literal,  List
+from typing import Literal
+
 import requests
-from fastapi import FastAPI, Depends, Query, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Query
 from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db.session import SessionLocal
 from app.db.models.candle import Candle
+from app.db.session import SessionLocal
 
 app = FastAPI(title="Crypto Trend MVP")
 
@@ -20,7 +21,6 @@ def get_db():
 
 
 class CandleOut(BaseModel):
-    id: int
     symbol: str
     interval: str
     open_time: int
@@ -35,61 +35,56 @@ class CandleOut(BaseModel):
 
 
 @app.get("/")
-def root():
-    return {"status": "ok"}
+def health():
+    return {"ok": True, "service": "crypto-trend-mvp"}
 
 
-@app.get(
-    "/candles/latest",
-    summary="Son mum verilerini listeler",
-    description=(
-        "Mum verilerini symbol/interval filtreleriyle getirir. "
-        "open_time alanına göre asc/desc sıralama ve limit/offset pagination destekler."
-    ),
-)
+@app.get("/candles/latest")
 def get_latest_candles(
-    symbol: Optional[str] = Query(
+    symbol: str | None = Query(
         default=None,
-        description="Sembol filtresi (örn: BTCUSDT)"
+        description="Sembol filtresi (örn: BTCUSDT)",
     ),
-    interval: Optional[str] = Query(
+    interval: str | None = Query(
         default=None,
-        description="Interval filtresi (örn: 1m, 5m, 1h)"
+        description="Interval filtresi (örn: 1m, 5m, 1h)",
     ),
     limit: int = Query(
         default=100,
         ge=1,
         le=1000,
-        description="Dönecek kayıt sayısı (1-1000, varsayılan: 100)"
+        description="Dönecek kayıt sayısı (1-1000)",
     ),
     offset: int = Query(
         default=0,
         ge=0,
-        description="Atlanacak kayıt sayısı (varsayılan: 0)"
+        description="Kaç kaydı atlayarak başlayacağı",
     ),
     sort: Literal["asc", "desc"] = Query(
         default="desc",
-        description="open_time sıralama yönü: asc | desc (varsayılan: desc)"
+        description="open_time sıralama yönü: asc | desc (varsayılan: desc)",
     ),
     db: Session = Depends(get_db),
 ):
     q = select(Candle)
 
     if symbol:
-        q = q.where(Candle.symbol == symbol.upper())
+        q = q.where(Candle.symbol == symbol.upper().strip())
     if interval:
-        q = q.where(Candle.interval == interval)
+        q = q.where(Candle.interval == interval.strip())
 
-    q = q.order_by(Candle.open_time.asc() if sort == "asc" else Candle.open_time.desc())
+    if sort == "asc":
+        q = q.order_by(Candle.open_time.asc())
+    else:
+        q = q.order_by(Candle.open_time.desc())
+
     q = q.offset(offset).limit(limit)
-
     rows = db.execute(q).scalars().all()
     return rows
 
 
-
 @app.get("/candles/latest_raw")
-def candles_latest_raw(
+def latest_raw(
     symbol: str = "BTCUSDT",
     interval: str = "1h",
     limit: int = 5,
@@ -97,7 +92,7 @@ def candles_latest_raw(
 ):
     rows = (
         db.query(Candle)
-        .filter(Candle.symbol == symbol.upper().strip(), Candle.interval == interval.strip())
+        .filter(Candle.symbol == symbol, Candle.interval == interval)
         .order_by(Candle.open_time.desc())
         .limit(limit)
         .all()
@@ -125,15 +120,14 @@ def debug_db(db: Session = Depends(get_db)):
     return {
         "total": total,
         "last": (
-            {
+            None
+            if not last
+            else {
                 "id": last.id,
                 "symbol": last.symbol,
                 "interval": last.interval,
                 "open_time": last.open_time,
-                "close": last.close,
             }
-            if last
-            else None
         ),
     }
 
@@ -146,33 +140,30 @@ def fetch_candles(
     db: Session = Depends(get_db),
 ):
     symbol = symbol.upper().strip()
-    interval = interval.strip()
-
     url = "https://api.binance.com/api/v3/klines"
     params = {"symbol": symbol, "interval": interval, "limit": limit}
 
     try:
-        resp = requests.get(url, params=params, timeout=15)
+        resp = requests.get(url, params=params, timeout=20)
         resp.raise_for_status()
         data = resp.json()
     except requests.RequestException as e:
-        raise HTTPException(status_code=502, detail=f"Binance request failed: {e}")
+        raise HTTPException(status_code=502, detail=f"Binance request failed: {e}") from e
 
     if not isinstance(data, list):
-        raise HTTPException(status_code=502, detail=f"Unexpected Binance response: {data}")
+        raise HTTPException(status_code=502, detail="Unexpected Binance response")
 
-    inserted = 0
+    created = 0
     skipped_existing = 0
 
     for k in data:
-        open_time = int(k[0])
-
+        ot = int(k[0])
         exists = (
             db.query(Candle)
             .filter(
                 Candle.symbol == symbol,
                 Candle.interval == interval,
-                Candle.open_time == open_time,
+                Candle.open_time == ot,
             )
             .first()
         )
@@ -183,7 +174,7 @@ def fetch_candles(
         row = Candle(
             symbol=symbol,
             interval=interval,
-            open_time=open_time,
+            open_time=ot,
             open=float(k[1]),
             high=float(k[2]),
             low=float(k[3]),
@@ -191,7 +182,7 @@ def fetch_candles(
             volume=float(k[5]),
         )
         db.add(row)
-        inserted += 1
+        created += 1
 
     db.commit()
 
@@ -200,6 +191,6 @@ def fetch_candles(
         "interval": interval,
         "requested": limit,
         "received": len(data),
-        "inserted": inserted,
+        "created": created,
         "skipped_existing": skipped_existing,
     }
