@@ -15,34 +15,23 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.11"
           cache: "pip"
           cache-dependency-path: requirements.txt
 
-      - name: Install deps
+      - name: Install dependencies
         run: |
-          python -V
           python -m pip install --upgrade pip setuptools wheel
           pip install -r requirements.txt
-          pip install pytest
-          pip freeze | sed -n '1,120p'
+          pip install httpx pytest
+          python - <<'PY'
+import importlib.util
+print("httpx installed:", importlib.util.find_spec("httpx") is not None)
+print("pytest installed:", importlib.util.find_spec("pytest") is not None)
+PY
 
-      - name: Debug files
-        run: |
-          pwd
-          ls -la
-          find . -maxdepth 3 -type f | sed -n '1,200p'
-          echo "----- pytest.ini -----"
-          (cat pytest.ini || true)
-          echo "----- pyproject.toml -----"
-          (cat pyproject.toml || true)
-
-      - name: Pytest collect only
-        run: |
-          python -m pytest --collect-only -q tests
-
-      - name: Run tests verbose
+      - name: Run tests
         env:
           PYTHONUNBUFFERED: "1"
         run: |
-          python -m pytest tests -vv -ra -s
+          python -m pytest tests -q -ra
