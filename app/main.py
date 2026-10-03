@@ -26,7 +26,7 @@ DBSession = Annotated[Session, Depends(get_db)]
 
 @app.get("/")
 def root():
-    return {"ok": True, "service": "crypto-trend-mvp"}
+    return {"ok": True, "service": "crypto-trend-mvp", "build": "af1f76f-marker"}
 
 
 @app.get("/health")
