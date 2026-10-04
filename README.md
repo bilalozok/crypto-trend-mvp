@@ -356,3 +356,20 @@ These experimental geometric rules are not calibrated probabilities or order
 instructions. Irregular patterns may be missed and overlapping patterns may
 appear. States are recomputed, not persisted. Ranking, similarity and volume
 confirmation will be separate additions.
+
+## Paginated formation scan
+GET /analysis/binance/formations/scan?direction=up&state=confirmed&limit=50
+scans a page of active symbols, ordered by recorded 24h quote volume, then symbol.
+Optional offset, min_quote_volume and include_stablecoins filters apply to the
+symbol universe before pagination. Default stablecoin exclusion uses the explicit
+starting list, not exhaustive asset classification. Limits: 1–100 symbols/page.
+state=all includes forming, confirmed and invalidated; not_detected is omitted.
+direction=all includes both directions. An empty matches list does not imply an
+empty market: follow next_offset until null to scan the remaining symbol pages.
+
+quality_counts reports ready and suppressed data statuses for each scanned page.
+matched_symbols counts coins, not patterns. No probability ranking is computed.
+A window query reads at most 200 closed candles per selected coin into memory;
+there is no network fetch, write, or per-symbol database query.
+Separate page requests are live reads, not an immutable snapshot. Catalogue
+refreshes can move volume-ranked pages; deduplicate symbols when combining pages.

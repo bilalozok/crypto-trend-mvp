@@ -140,6 +140,10 @@ def analyze(db, symbol, stamp):
             .all()
         )
     )
+    return analyze_rows(rows, symbol, stamp)
+
+
+def analyze_rows(rows, symbol, stamp):
     status = "ready"
     if len(rows) < 200:
         status = "insufficient_data"
