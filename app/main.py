@@ -10,6 +10,7 @@ from app.db.session import SessionLocal, engine
 from app.schemas import CandleOut
 from app.schemas.signal import TrendOut
 from app.services.binance import fetch_klines
+from app.services.candle_ingestion import upsert_candles
 from app.services.signal_engine import get_trend
 from app.utils.timeframes import Interval
 
@@ -76,56 +77,12 @@ def fetch_candles(
     except Exception as e:
         raise HTTPException(status_code=502, detail=str(e)) from e
 
-    created_or_updated: list[Candle] = []
-
-    for k in klines:
-        open_time_ms = int(k[0])
-        open_time_dt = open_time_ms
-
-        open_price = float(k[1])
-        high_price = float(k[2])
-        low_price = float(k[3])
-        close_price = float(k[4])
-        volume = float(k[5])
-
-        existing = (
-            db.query(Candle)
-            .filter(
-                Candle.symbol == symbol,
-                Candle.interval == interval,
-                Candle.open_time == open_time_dt,
-            )
-            .first()
-        )
-
-        if existing:
-            existing.open = open_price
-            existing.high = high_price
-            existing.low = low_price
-            existing.close = close_price
-            existing.volume = volume
-            created_or_updated.append(existing)
-        else:
-            row = Candle(
-                symbol=symbol,
-                interval=interval,
-                open_time=open_time_dt,
-                open=open_price,
-                high=high_price,
-                low=low_price,
-                close=close_price,
-                volume=volume,
-            )
-            db.add(row)
-            created_or_updated.append(row)
-
-    db.commit()
-
-    for row in created_or_updated:
-        db.refresh(row)
-
-    created_or_updated.sort(key=lambda x: x.open_time)
-    return created_or_updated
+    try:
+        return upsert_candles(db, symbol, interval, klines)
+    except (ValueError, IndexError, TypeError) as exc:
+        raise HTTPException(
+            status_code=502, detail="Provider returned invalid candle data"
+        ) from exc
 
 
 @app.get("/signals/trend", response_model=TrendOut)

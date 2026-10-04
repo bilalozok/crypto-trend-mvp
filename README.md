@@ -237,3 +237,46 @@ make check
 ## Lisans
 
 Bu proje öğrenme/deneme amaçlı MVP çalışmasıdır.
+
+## Otomatik mum güncelleme (Railway Cron)
+
+API servisini çalışır bırakın. Aynı repodan ayrı bir `candle-worker` servisi oluşturun.
+Worker her çalışmada veri çeker, mevcut mumları günceller ve kapanır; zamanlama Railway'dedir.
+
+| Ayar | Değer |
+| --- | --- |
+| Start Command | `python -m app.workers.scheduler` |
+| Cron Schedule | `*/5 * * * *` |
+| Restart Policy | Never |
+| Healthcheck | Boş |
+| Public domain | Gerekmiyor |
+
+Worker Variables:
+
+```text
+DATABASE_URL=${{Postgres.DATABASE_URL}}
+FETCH_SYMBOLS=BTCUSDT
+FETCH_INTERVALS=1h
+FETCH_LIMIT=100
+```
+
+Railway, DATABASE_URL referansını çözümler. Worker Postgres URL'sini psycopg 3'e
+uygun biçime dönüştürür. DATABASE_URL eksikse iş durur; varsayılan SQLite'a yazılmaz.
+Postgres servis adı farklıysa referansı o servis adıyla seçin.
+
+- Cron UTC'de her 5 dakikada çalışır; kesin dakika garantisi yoktur.
+- Önceki iş bitmediyse Railway sonraki çalışmayı atlar.
+- Her iş en fazla 5 sembol/interval çiftini sırasıyla işler.
+- FETCH_LIMIT 1–100 arasındadır; OKX fallback'i de en fazla 100 mum döndürür.
+- Açık mumlar güncellenir; trend endpoint'i sadece kapanmış mumları kullanır.
+- Upsert, API ile worker'ın eşzamanlı yazmalarında mükerrer kayıtları önler.
+- İlk çalışmada tablo hazır olmalıdır; worker migration çalıştırmaz.
+- Log: `fetch_complete symbol=BTCUSDT interval=1h candles=100`.
+- Bir çift başarısızsa diğerleri denenir ve süreç 1 koduyla kapanır. Hatalı ayarda
+  çıkış kodu 2'dir. Ayrıntılı bağlantı hataları şifre sızdırmamak için loglanmaz.
+- Ağ hatalarında aynı çalışma içinde yeniden deneme döngüsü yoktur; sonraki cron
+  çalışması tekrar dener. Son 100 mumdan eski boşluklar ayrıca backfill gerektirir.
+
+PostgreSQL'e özel eşzamanlı upsert ve transaction rollback testleri
+`Worker PostgreSQL` CI işinde PostgreSQL 18 ile çalışır.
+`TEST_POSTGRES_URL` yalnızca bu test veritabanı için kullanılır; üretim URL'sini vermeyin.
