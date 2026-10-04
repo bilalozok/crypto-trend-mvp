@@ -19,10 +19,12 @@ def fit(points):
     return slope, intercept, error
 
 
-def detect_sloped(rows, highs, lows, kind, name, atr, tolerance, buffer):
+def detect_sloped(rows, highs, lows, kind, name, atr, tolerance, buffer, expected_direction=None):
     expected = {"symmetrical_triangle": "neutral", "rising_wedge": "down", "falling_wedge": "up"}[
         kind
     ]
+    if expected_direction is not None:
+        expected = expected_direction
     result = {
         "pattern": kind,
         "name": name,

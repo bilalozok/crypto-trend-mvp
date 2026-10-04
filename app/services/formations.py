@@ -18,6 +18,8 @@ NAMES = {
     "falling_wedge": "Alçalan takoz",
     "bull_flag": "Boğa bayrağı",
     "bear_flag": "Ayı bayrağı",
+    "bull_pennant": "Boğa flaması",
+    "bear_pennant": "Ayı flaması",
 }
 
 
@@ -81,6 +83,8 @@ def confirmation_volume(rows, confirmed):
 def detect(rows):
     from app.services.flag_patterns import KINDS as FLAG_KINDS
     from app.services.flag_patterns import detect_flag
+    from app.services.pennant_patterns import KINDS as PENNANT_KINDS
+    from app.services.pennant_patterns import detect_pennant
     from app.services.sloped_patterns import KINDS, detect_sloped
 
     highs, lows = pivots(rows)
@@ -95,6 +99,9 @@ def detect(rows):
     buffer = max(rows[-1].close * 0.001, atr * 0.2)
     results = []
     for kind, name in NAMES.items():
+        if kind in PENNANT_KINDS:
+            results.append(detect_pennant(rows, highs, lows, kind, name, atr, tolerance, buffer))
+            continue
         if kind in FLAG_KINDS:
             results.append(detect_flag(rows, highs, lows, kind, name, atr, tolerance, buffer))
             continue

@@ -487,3 +487,19 @@ invalidate. Before confirmation the flag expires after 60 bars from its start.
 At confirmation, price and invalidation levels freeze like wedges.
 pole_points, pole_move_pct and flag_retracement_ratio explain the preceding move;
 the chart draws the pole in gold. These experimental thresholds need backtesting.
+
+## Bull and bear pennants
+bull_pennant and bear_pennant extend the registry to thirteen. They reuse the
+converging opposing-slope triangle rules with a directional pole filter.
+The compact triangle spans 12–48 bars with its last pivot within 30 bars.
+Its first touch must be the pole-side extreme. As with flags, the extreme close
+8–30 bars before that touch defines the pole; its move must exceed 3 ATR and
+3 initial channel widths, and retracement through the last pivot is <=60%.
+Generic triangle residual, containment, convergence and apex rules still apply.
+
+A bull pennant requires upward confirmation; a bear pennant requires downward
+confirmation. Opposite breakouts invalidate and do not get confirmed timestamps.
+Timing, age, volume ratio and frozen confirmation levels use the shared rules.
+pole_points, pole_move_pct and pennant_retracement_ratio explain the structure.
+The existing chart draws the pole and converging boundaries. These experimental
+continuation rules are not calibrated probabilities.
