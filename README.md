@@ -555,3 +555,19 @@ pivot ve asgari eğim kuralları korunur. Oluşurken yön nötrdür; son pivotun
 Teyitte seviyeler sabitlenir; karşı sınır ihlali geçersizleşmedir. Gelecek
 tepe kesişimi yoktur; teyitsiz yapı son pivottan 60 mum sonra sona erer.
 Grafikte iki genişleyen çizgi ve pivotlar gösterilir. Başarı olasılığı değildir.
+
+
+### Tek coin analiz raporu
+
+`GET /analysis/binance/report?symbol=BTCUSDT` aynı 200 kapanmış 15m mumdan
+20 formasyon sonucunu birleştirir. Yeni veri çekmez ve veri tabanına yazmaz.
+Varsayılan `max_confirmation_age_bars=4`, `min_volume_ratio=1.5` parametreleri
+raporda gösterilir. Güncel teyit, yaş sınırını geçen ve kırılım seviyesini
+koruyan `confirmed` yapı anlamındadır; hacim desteği ayrıca değerlendirilir.
+Her iki yönde güncel teyit varsa `conflicting`, yalnızca bir yönde varsa
+`bullish_setup`/`bearish_setup`, teyit yoksa `waiting` döner. Güncel olmayan
+veya kırılımı korunmayan teyitler özete yön vermez; gerekçeleri her formasyonda
+gösterilir. Veri hazır değilse değerlendirme `unavailable` ve formasyonlar
+boştur. Türkçe yorum, sayımlar, tüm tespit edilen yapılar ve grafik bağlantısı
+döner. Sayımlar birbirinden bağımsız başarı kanıtları değildir; rapor fiyat
+tahmini, kalibre edilmiş olasılık veya emir talimatı üretmez.

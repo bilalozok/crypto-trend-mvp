@@ -201,6 +201,25 @@ def formation_analysis(
     return result
 
 
+@app.get("/analysis/binance/report")
+def coin_analysis_report(
+    db: DbDep,
+    symbol: str = Query(..., min_length=1, max_length=64, pattern=r"^[A-Za-z0-9]+$"),
+    max_confirmation_age_bars: int = Query(4, ge=0, le=200),
+    min_volume_ratio: float = Query(1.5, ge=0, le=1000, allow_inf_nan=False),
+):
+    from app.services.coin_report import build_report
+    from app.services.formations import analyze
+
+    try:
+        result = analyze(db, symbol.upper(), now_ms())
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=503, detail="Analysis database unavailable") from exc
+    if result is None:
+        raise HTTPException(status_code=404, detail="Active Binance Spot USDT symbol not found")
+    return build_report(result, max_confirmation_age_bars, min_volume_ratio)
+
+
 @app.get("/analysis/binance/formations/scan")
 def formation_scan(
     db: DbDep,
