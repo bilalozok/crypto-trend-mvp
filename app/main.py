@@ -40,7 +40,7 @@ def health() -> dict:
 
 @app.get("/candles/latest", response_model=list[CandleOut])
 def get_latest_candles(
-    symbol: str = Query(..., description="örn: BTCUSDT"),
+    symbol: str = Query(..., description="orn: BTCUSDT"),
     interval: str = Query("1h"),
     limit: int = Query(5, ge=1, le=500),
     db: DbDep = None,
@@ -67,7 +67,7 @@ def fetch_candles(
     try:
         klines = fetch_klines(symbol=symbol, interval=interval, limit=limit)
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Binance fetch error: {e}") from e
+        raise HTTPException(status_code=502, detail=str(e)) from e
 
     created_or_updated: list[Candle] = []
 
