@@ -1,4 +1,8 @@
 import requests
+from sqlalchemy import select
+
+from app.db.models.candle import Candle
+from app.db.session import SessionLocal
 
 
 def _fake_binance_klines():
@@ -68,9 +72,18 @@ def test_fetch_idempotent_with_mock(client, monkeypatch):
     assert r2.status_code == 200, r2.text
     d2 = r2.json()
 
-    assert "created" in d2
-    assert "skipped_existing" in d2
-    assert d2["created"] == 0
+    assert isinstance(d2, list)
+    assert len(d2) == 2
+    assert d2 == r1.json()
+    assert d2[0]["open_time"] == "2023-11-14T22:13:20Z"
+    with SessionLocal() as db:
+        rows = db.scalars(select(Candle)).all()
+        assert len(rows) == 2
+        assert [row.open_time for row in rows] == [1700000000000, 1700000060000]
+
+    latest = client.get("/candles/latest?symbol=BTCUSDT&interval=1m&limit=2")
+    assert latest.status_code == 200
+    assert latest.json() == d2
 
 
 def test_fetch_429_returns_502(client, monkeypatch):

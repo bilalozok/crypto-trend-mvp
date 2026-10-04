@@ -14,11 +14,18 @@ from app.db.session import engine  # noqa: E402
 from app.main import app  # noqa: E402
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(autouse=True)
 def prepare_db():
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def cleanup_db_file():
+    yield
+    engine.dispose()
+    tmp_db.close()
     try:
         os.unlink(tmp_db.name)
     except Exception:
@@ -27,4 +34,5 @@ def prepare_db():
 
 @pytest.fixture()
 def client():
-    return TestClient(app)
+    with TestClient(app) as test_client:
+        yield test_client

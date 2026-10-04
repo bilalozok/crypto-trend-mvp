@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -43,16 +43,19 @@ def get_latest_candles(
     symbol: str = Query(..., description="orn: BTCUSDT"),
     interval: str = Query("1h"),
     limit: int = Query(5, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    sort: Literal["asc", "desc"] = Query("asc"),
     db: DbDep = None,
 ) -> list[CandleOut]:
     rows = (
         db.query(Candle)
         .filter(Candle.symbol == symbol.upper(), Candle.interval == interval)
         .order_by(Candle.open_time.desc())
+        .offset(offset)
         .limit(limit)
         .all()
     )
-    return list(reversed(rows))
+    return list(reversed(rows)) if sort == "asc" else rows
 
 
 @app.post("/candles/fetch/{symbol}", response_model=list[CandleOut])
