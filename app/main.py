@@ -4,9 +4,9 @@ import requests
 from fastapi import Depends, FastAPI, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.db import Base, SessionLocal, engine
-from app.models import Candle
-from app.schemas import CandleOut
+from app.db.base import Base
+from app.db.models.candle import Candle
+from app.db.session import SessionLocal, engine
 
 app = FastAPI(title="Crypto Trend MVP")
 
@@ -34,7 +34,9 @@ def health():
     return {"ok": True}
 
 
-@app.get("/candles/latest", response_model=list[CandleOut])
+@app.get(
+    "/candles/latest",
+)
 def get_latest_candles(
     symbol: str = Query(..., description="örn: BTCUSDT"),
     interval: str = Query("1h"),
