@@ -471,3 +471,19 @@ opposite invalidation levels freeze. A setup with no confirmation before its ape
 is invalidated as expired. boundary_lines expose fitted segments and apex_time;
 the chart plots them. Filters up/down exclude unconfirmed neutral triangles.
 These are experimental geometry, not calibrated direction forecasts.
+
+## Bull and bear flags
+bull_flag and bear_flag extend the registry to eleven. Both require an explicit
+preceding pole and three upper plus three lower touches of a countertrend channel.
+Boundaries must have matching signs (down for bull, up for bear), be approximately
+parallel (slope difference over the span <= tolerance), fit within tolerance, and
+contain observed candles up to the last pivot. Span is 12–48 bars, anchor within
+30 bars; width must exceed 2 tolerances and change by no more than 20%.
+The first touch must be the pole-side extreme. The pole reference is the most
+extreme close 8–30 bars before that touch. Its move must exceed both 3 ATR and
+3 channel widths; retracement through the last pivot may consume at most 60%.
+Confirmation follows pivot availability in the pole direction; opposing closes
+invalidate. Before confirmation the flag expires after 60 bars from its start.
+At confirmation, price and invalidation levels freeze like wedges.
+pole_points, pole_move_pct and flag_retracement_ratio explain the preceding move;
+the chart draws the pole in gold. These experimental thresholds need backtesting.

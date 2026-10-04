@@ -72,11 +72,13 @@ function draw(){
   const points=(p.pivot_points||[]).map(pt=>({pt,i:rows.findIndex(r=>r.open_time===Date.parse(pt.open_time))})).filter(a=>a.i>=0);
   for(const kind of ["high","low"]){const group=points.filter(a=>a.pt.kind===kind).sort((a,b)=>a.i-b.i);if(group.length>1)add("polyline",{points:group.map(a=>x(a.i)+","+y(a.pt.price)).join(" "),fill:"none",stroke:"#8259b8","stroke-width":2})}
   for(const line of p.boundary_lines||[]){const a=rows.findIndex(r=>r.open_time===Date.parse(line.start_time)),b=rows.findIndex(r=>r.open_time===Date.parse(line.end_time));if(a>=0&&b>=0)add("line",{x1:x(a),x2:x(b),y1:y(line.start_price),y2:y(line.end_price),stroke:"#245fd0","stroke-width":2})}
+  const pole=(p.pole_points||[]).map(pt=>({pt,i:rows.findIndex(r=>r.open_time===Date.parse(pt.open_time))})).filter(a=>a.i>=0);
+  if(pole.length===2)add("line",{x1:x(pole[0].i),x2:x(pole[1].i),y1:y(pole[0].pt.price),y2:y(pole[1].pt.price),stroke:"#cc8b20","stroke-width":3});
   points.forEach(a=>{add("circle",{cx:x(a.i),cy:y(a.pt.price),r:5,fill:"#8259b8",stroke:"white","stroke-width":1});const n=text(a.pt.label||(a.pt.kind==="low"?"Dip":"Tepe"),x(a.i)+6,y(a.pt.price)-8,"#8259b8");n.setAttribute("font-size","10")});
   if(p.confirmed_at){const i=rows.findIndex(r=>r.open_time+900000===Date.parse(p.confirmed_at));if(i>=0){add("line",{x1:x(i),x2:x(i),y1:top,y2:500,stroke:"#13816b","stroke-dasharray":"3 3"});text("Teyit",Math.min(x(i)+5,right-40),18,"#13816b")}}
   detail("Durum",states[p.status]);detail("Yön",({up:"Yukarı",down:"Aşağı",neutral:"Kırılım bekleniyor"})[p.direction]);detail("Kırılım",format(p.breakout_level));detail("Teyit eşiği",format(p.confirmation_threshold));
   detail("Geçersizleşme",format(p.invalidation_level));detail("Teyit yaşı",p.confirmation_age_bars==null?"—":p.confirmation_age_bars+" mum");
-  detail("Hacim oranı",p.volume_ratio==null?"—":format(p.volume_ratio)+"×");detail("Son kapanış",format(p.last_close));
+  detail("Hacim oranı",p.volume_ratio==null?"—":format(p.volume_ratio)+"×");detail("Son kapanış",format(p.last_close));if(p.flag_retracement_ratio!=null)detail("Bayrak geri çekilmesi",format(p.flag_retracement_ratio*100)+"%");
   detail("Eşiği koruyor",p.breakout_holding==null?"—":p.breakout_holding?"Evet":"Hayır");
  }
  svg.onpointermove=event=>{const bounds=svg.getBoundingClientRect(),px=(event.clientX-bounds.left)*1100/bounds.width;const i=Math.max(0,Math.min(rows.length-1,Math.floor((px-left)/step)));const r=rows[i];el("tooltip").textContent=time(r.open_time)+" UTC · O "+format(r.open)+" · H "+format(r.high)+" · L "+format(r.low)+" · C "+format(r.close)+" · V "+format(r.volume)};

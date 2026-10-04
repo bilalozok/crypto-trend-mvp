@@ -16,6 +16,8 @@ NAMES = {
     "symmetrical_triangle": "Simetrik üçgen",
     "rising_wedge": "Yükselen takoz",
     "falling_wedge": "Alçalan takoz",
+    "bull_flag": "Boğa bayrağı",
+    "bear_flag": "Ayı bayrağı",
 }
 
 
@@ -77,6 +79,8 @@ def confirmation_volume(rows, confirmed):
 
 
 def detect(rows):
+    from app.services.flag_patterns import KINDS as FLAG_KINDS
+    from app.services.flag_patterns import detect_flag
     from app.services.sloped_patterns import KINDS, detect_sloped
 
     highs, lows = pivots(rows)
@@ -91,6 +95,9 @@ def detect(rows):
     buffer = max(rows[-1].close * 0.001, atr * 0.2)
     results = []
     for kind, name in NAMES.items():
+        if kind in FLAG_KINDS:
+            results.append(detect_flag(rows, highs, lows, kind, name, atr, tolerance, buffer))
+            continue
         if kind in KINDS:
             results.append(detect_sloped(rows, highs, lows, kind, name, atr, tolerance, buffer))
             continue
