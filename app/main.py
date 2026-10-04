@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, Query
@@ -73,6 +74,8 @@ def fetch_candles(
 
     for k in klines:
         open_time_ms = int(k[0])
+        open_time_dt = datetime.fromtimestamp(open_time_ms / 1000, tz=UTC)
+
         open_price = float(k[1])
         high_price = float(k[2])
         low_price = float(k[3])
@@ -84,7 +87,7 @@ def fetch_candles(
             .filter(
                 Candle.symbol == symbol,
                 Candle.interval == interval,
-                Candle.open_time_ms == open_time_ms,
+                Candle.open_time == open_time_dt,
             )
             .first()
         )
@@ -100,7 +103,7 @@ def fetch_candles(
             row = Candle(
                 symbol=symbol,
                 interval=interval,
-                open_time_ms=open_time_ms,
+                open_time=open_time_dt,
                 open=open_price,
                 high=high_price,
                 low=low_price,
