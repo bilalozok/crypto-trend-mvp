@@ -85,6 +85,7 @@ def detect(rows):
     for kind, name in NAMES.items():
         up = kind in {"double_bottom", "ascending_triangle"}
         candidate = None
+        selected_points = []
         if kind.startswith("double"):
             points = lows if up else highs
             for a, b in zip(points, points[1:], strict=False):
@@ -97,6 +98,14 @@ def detect(rows):
                 floor = min(a[1], b[1]) if up else max(a[1], b[1])
                 if abs(level - floor) >= 2 * tolerance:
                     candidate = (a[0], b[0], level, floor)
+                    selected_points = [
+                        {
+                            "open_time": timestamp(rows[index].open_time),
+                            "price": value,
+                            "kind": "low" if up else "high",
+                        }
+                        for index, value in (a, b)
+                    ]
         else:
             flat, slope = (highs[-3:], lows[-3:]) if up else (lows[-3:], highs[-3:])
             if len(flat) == len(slope) == 3:
@@ -118,6 +127,18 @@ def detect(rows):
                     and (level - floor if up else floor - level) > tolerance
                 ):
                     candidate = (start, anchor, level, floor)
+                    selected_points = [
+                        {
+                            "open_time": timestamp(rows[index].open_time),
+                            "price": value,
+                            "kind": label,
+                        }
+                        for points, label in (
+                            (flat, "high" if up else "low"),
+                            (slope, "low" if up else "high"),
+                        )
+                        for index, value in points
+                    ]
         result = {
             "pattern": kind,
             "name": name,
@@ -137,6 +158,7 @@ def detect(rows):
             "breakout_position": None,
             "breakout_holding": None,
             "confirmation_threshold": None,
+            "pivot_points": selected_points,
         }
         if candidate:
             start, anchor, level, floor = candidate

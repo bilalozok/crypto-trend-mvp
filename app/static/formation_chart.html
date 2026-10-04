@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Formasyon inceleme · Crypto Trend</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f5f8;color:#182230;font:15px system-ui,sans-serif}
+main{max-width:1200px;margin:36px auto;padding:0 20px}h1{font-size:28px;margin-bottom:8px}
+p{color:#526172;line-height:1.6}section{background:white;border:1px solid #dde3ec;border-radius:14px;padding:20px;margin-top:18px}
+form{display:flex;gap:12px;align-items:end;flex-wrap:wrap}label{display:grid;gap:6px}input,select,button{font:inherit;padding:10px;border:1px solid #b8c5d4;border-radius:7px}
+button{background:#173f79;color:white;cursor:pointer}button:disabled{opacity:.5}input{text-transform:uppercase;width:180px}
+#status{padding:12px;border-radius:7px;background:#eef3f9}#status[data-error=true]{background:#fff0df;color:#843f00}
+svg{display:block;width:100%;height:auto;min-height:260px}#tooltip{min-height:26px;font-variant-numeric:tabular-nums}
+#details{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-top:16px}
+dt{font-size:12px;color:#526172}dd{margin:5px 0;font-weight:600}.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px}
+.blue{color:#245fd0}.red{color:#c93b47}.purple{color:#8259b8}.green{color:#13816b}
+small{color:#526172}#reason{margin-bottom:0}
+</style>
+</head>
+<body><main>
+<h1>Formasyon inceleme</h1>
+<p>Binance Spot · USDT · 15m · Son 200 kapanmış mum</p>
+<section>
+<form id="form">
+<label>Coin<input id="symbol" value="BTCUSDT" maxlength="64" pattern="[A-Za-z0-9]+" required></label>
+<button id="load" type="submit">Grafiği yükle</button>
+<label>Formasyon<select id="pattern" aria-label="Grafikte gösterilecek formasyon"></select></label>
+</form>
+<p id="status" role="status">Veri yükleniyor…</p>
+<div class="legend"><span class="blue">Kırılım seviyesi</span><span class="purple">Teyit eşiği</span><span class="red">Geçersizleşme seviyesi</span><span class="green">Teyit mumu</span></div>
+<svg id="chart" viewBox="0 0 1100 560" role="img" aria-label="Mum grafiği, hacim ve formasyon noktaları"></svg>
+<div id="tooltip" aria-live="polite"></div>
+<dl id="details"></dl><p id="reason"></p>
+</section>
+<p><small>Deneysel geometrik kurallar. Grafik olasılık veya emir üretmez. Teyit durumu geçmiş kırılımı ifade eder; son kapanış ayrıca değerlendirilir. Seviyeler mum kapanışı ve teyit payıyla kontrol edilir. Tüm saatler UTC.</small></p>
+</main>
+<script>
+"use strict";
+const el=id=>document.getElementById(id), NS="http://www.w3.org/2000/svg";
+let data=null, sequence=0;
+const states={forming:"Oluşuyor",confirmed:"Teyitli",invalidated:"Geçersiz",not_detected:"Tespit edilmedi"};
+const quality={ready:"Güncel",stale_data:"Veri eski: formasyon analizi bastırıldı",missing_data:"Mum boşluğu var: analiz bastırıldı",insufficient_data:"200 mum henüz tamamlanmadı",invalid_data:"Geçersiz veri: grafik ve analiz bastırıldı"};
+const format=v=>v==null?"—":Number(v).toLocaleString("tr-TR",{maximumSignificantDigits:8});
+const time=v=>new Date(v).toISOString().slice(0,16).replace("T"," ");
+function add(tag,attrs,parent=el("chart")){const n=document.createElementNS(NS,tag);for(const [k,v]of Object.entries(attrs))n.setAttribute(k,String(v));parent.append(n);return n}
+function text(value,x,y,color="#526172"){const n=add("text",{x,y,fill:color,"font-size":12});n.textContent=value;return n}
+function detail(label,value){const box=document.createElement("div"),dt=document.createElement("dt"),dd=document.createElement("dd");dt.textContent=label;dd.textContent=value;box.append(dt,dd);el("details").append(box)}
+function draw(){
+ const svg=el("chart");svg.replaceChildren();el("details").replaceChildren();el("tooltip").textContent="Mum ayrıntıları için grafiğin üzerine gel.";
+ const p=data?.patterns[Number(el("pattern").value)],rows=data?.candles||[];
+ el("reason").textContent=p?.reason||"Veri hazır olduğunda formasyonlar değerlendirilir.";
+ if(!rows.length){text("Gösterilecek geçerli mum verisi yok.",30,80);return}
+ const left=25,right=1000,top=25,bottom=390,width=right-left,step=width/rows.length;
+ const levels=p?[p.breakout_level,p.invalidation_level,p.confirmation_threshold].filter(v=>v!=null):[];
+ const min=Math.min(...rows.map(r=>r.low),...levels),max=Math.max(...rows.map(r=>r.high),...levels);
+ const pad=Math.max((max-min)*.07,max*.0001),lo=min-pad,hi=max+pad;
+ const y=v=>bottom-(v-lo)/(hi-lo)*(bottom-top),x=i=>left+(i+.5)*step;
+ for(let i=0;i<=5;i++){const v=lo+(hi-lo)*i/5;add("line",{x1:left,x2:right,y1:y(v),y2:y(v),stroke:"#e4e9f0"});text(format(v),right+8,y(v)+4)}
+ const vmax=Math.max(...rows.map(r=>r.volume),1);
+ rows.forEach((r,i)=>{
+  const color=r.close>=r.open?"#13816b":"#c93b47";
+  add("line",{x1:x(i),x2:x(i),y1:y(r.high),y2:y(r.low),stroke:color});
+  add("rect",{x:x(i)-step*.32,y:Math.min(y(r.open),y(r.close)),width:Math.max(step*.64,1),height:Math.max(Math.abs(y(r.open)-y(r.close)),1),fill:color});
+  add("rect",{x:x(i)-step*.32,y:500-r.volume/vmax*75,width:Math.max(step*.64,1),height:r.volume/vmax*75,fill:color,opacity:.5});
+ });
+ text("Hacim",left,420);
+ [0,Math.floor(rows.length/2),rows.length-1].forEach(i=>text(time(rows[i].open_time),Math.min(x(i),right-120),535));
+ if(p){
+  const line=(level,color,dash)=>{if(level!=null)add("line",{x1:left,x2:right,y1:y(level),y2:y(level),stroke:color,"stroke-dasharray":dash})};
+  line(p.breakout_level,"#245fd0","6 3");line(p.confirmation_threshold,"#8259b8","2 3");line(p.invalidation_level,"#c93b47","6 3");
+  const points=(p.pivot_points||[]).map(pt=>({pt,i:rows.findIndex(r=>r.open_time===Date.parse(pt.open_time))})).filter(a=>a.i>=0);
+  for(const kind of ["high","low"]){const group=points.filter(a=>a.pt.kind===kind).sort((a,b)=>a.i-b.i);if(group.length>1)add("polyline",{points:group.map(a=>x(a.i)+","+y(a.pt.price)).join(" "),fill:"none",stroke:"#8259b8","stroke-width":2})}
+  points.forEach(a=>{add("circle",{cx:x(a.i),cy:y(a.pt.price),r:5,fill:"#8259b8",stroke:"white","stroke-width":1});const n=text(a.pt.kind==="low"?"Dip":"Tepe",x(a.i)+6,y(a.pt.price)-8,"#8259b8");n.setAttribute("font-size","10")});
+  if(p.confirmed_at){const i=rows.findIndex(r=>r.open_time+900000===Date.parse(p.confirmed_at));if(i>=0){add("line",{x1:x(i),x2:x(i),y1:top,y2:500,stroke:"#13816b","stroke-dasharray":"3 3"});text("Teyit",Math.min(x(i)+5,right-40),18,"#13816b")}}
+  detail("Durum",states[p.status]);detail("Kırılım",format(p.breakout_level));detail("Teyit eşiği",format(p.confirmation_threshold));
+  detail("Geçersizleşme",format(p.invalidation_level));detail("Teyit yaşı",p.confirmation_age_bars==null?"—":p.confirmation_age_bars+" mum");
+  detail("Hacim oranı",p.volume_ratio==null?"—":format(p.volume_ratio)+"×");detail("Son kapanış",format(p.last_close));
+  detail("Eşiği koruyor",p.breakout_holding==null?"—":p.breakout_holding?"Evet":"Hayır");
+ }
+ svg.onpointermove=event=>{const bounds=svg.getBoundingClientRect(),px=(event.clientX-bounds.left)*1100/bounds.width;const i=Math.max(0,Math.min(rows.length-1,Math.floor((px-left)/step)));const r=rows[i];el("tooltip").textContent=time(r.open_time)+" UTC · O "+format(r.open)+" · H "+format(r.high)+" · L "+format(r.low)+" · C "+format(r.close)+" · V "+format(r.volume)};
+}
+async function load(){
+ const token=++sequence,symbol=el("symbol").value.trim().toUpperCase();
+ if(!/^[A-Z0-9]{1,64}$/.test(symbol)){el("status").textContent="Geçerli bir USDT paritesi gir.";return}
+ el("load").disabled=true;el("status").textContent="Veri yükleniyor…";el("status").dataset.error="false";
+ data=null;el("pattern").replaceChildren();el("chart").replaceChildren();el("details").replaceChildren();el("reason").textContent="";el("tooltip").textContent="";
+ try{
+  const response=await fetch("/analysis/binance/chart-data?symbol="+encodeURIComponent(symbol),{signal:AbortSignal.timeout(60000)});
+  if(!response.ok)throw new Error(response.status===404?"Aktif parite bulunamadı.":"Veri alınamadı (HTTP "+response.status+").");
+  const result=await response.json();if(token!==sequence)return;data=result;
+  el("status").textContent=symbol+" · "+(quality[data.status]||data.status)+" · "+data.candles_used+" mum · Sorgu "+time(data.as_of)+" UTC";
+  el("status").dataset.error=String(data.status!=="ready");
+  data.patterns.forEach((p,i)=>{const o=document.createElement("option");o.value=i;o.textContent=p.name+" · "+states[p.status];el("pattern").append(o)});
+  const found=data.patterns.findIndex(p=>p.status!=="not_detected");if(found>=0)el("pattern").value=found;
+  history.replaceState(null,"","?symbol="+encodeURIComponent(symbol));draw();
+ }catch(error){if(token===sequence){el("status").textContent=error.message;el("status").dataset.error="true"}}
+ finally{if(token===sequence)el("load").disabled=false}
+}
+el("form").onsubmit=e=>{e.preventDefault();load()};el("pattern").onchange=draw;
+const initial=new URLSearchParams(location.search).get("symbol");if(initial)el("symbol").value=initial;
+load();
+</script></body></html>

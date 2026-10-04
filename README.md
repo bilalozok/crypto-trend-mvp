@@ -409,3 +409,16 @@ Combine with state=confirmed, max_confirmation_age_bars=4 and
 breakout_holding=true. Ratios are within-symbol comparisons; raw coin volumes
 must not be compared across different assets. Existing 24h quote-volume filters
 use USDT turnover and are separate.
+
+## Visual formation review
+Open /analysis/binance/chart?symbol=BNBUSDT to inspect candles, volume, selected
+pivot points, breakout/invalidation levels and the buffered confirmation threshold.
+Select another pattern or enter another symbol. Hover to inspect candle values.
+The vertical confirmation marker denotes its candle; all chart times are UTC.
+
+GET /analysis/binance/chart-data?symbol=BNBUSDT returns candle data and analysis
+from the same in-memory 200-candle window and cutoff. It does not fetch Binance
+or write data. Non-ready status suppresses overlays; invalid data also suppresses
+candles. Every pattern result now includes pivot_points (time, price, high/low).
+The chart uses local SVG/JavaScript without external chart scripts or CDNs.
+It is a review tool, not order entry or a backtest.

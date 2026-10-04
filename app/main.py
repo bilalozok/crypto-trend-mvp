@@ -232,3 +232,29 @@ def formation_scan(
         )
     except SQLAlchemyError as exc:
         raise HTTPException(status_code=503, detail="Analysis database unavailable") from exc
+
+
+@app.get("/analysis/binance/chart-data")
+def formation_chart_data(
+    db: DbDep,
+    symbol: str = Query(..., min_length=1, max_length=64, pattern=r"^[A-Za-z0-9]+$"),
+):
+    from app.services.formation_chart import chart_data
+
+    try:
+        result = chart_data(db, symbol.upper(), now_ms())
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=503, detail="Chart database unavailable") from exc
+    if result is None:
+        raise HTTPException(status_code=404, detail="Active Binance Spot USDT symbol not found")
+    return result
+
+
+@app.get("/analysis/binance/chart", include_in_schema=False)
+def formation_chart_page():
+    from pathlib import Path
+
+    from fastapi.responses import HTMLResponse
+
+    page = Path(__file__).resolve().parent / "static" / "formation_chart.html"
+    return HTMLResponse(page.read_text(encoding="utf-8"))
