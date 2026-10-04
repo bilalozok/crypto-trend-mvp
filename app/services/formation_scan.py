@@ -19,6 +19,7 @@ def scan(
     include_stablecoins=False,
     max_confirmation_age_bars=None,
     breakout_holding=None,
+    min_volume_ratio=None,
 ):
     filters = [
         BinanceSpotSymbol.active.is_(True),
@@ -77,6 +78,10 @@ def scan(
                 )
             )
             and (breakout_holding is None or p.get("breakout_holding") is breakout_holding)
+            and (
+                min_volume_ratio is None
+                or (p.get("volume_ratio") is not None and p["volume_ratio"] >= min_volume_ratio)
+            )
         ]
         if patterns:
             matches.append(
@@ -101,6 +106,7 @@ def scan(
         "include_stablecoins": include_stablecoins,
         "max_confirmation_age_bars": max_confirmation_age_bars,
         "breakout_holding": breakout_holding,
+        "min_volume_ratio": min_volume_ratio,
         "total_eligible_symbols": total,
         "limit": limit,
         "offset": offset,

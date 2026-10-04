@@ -392,3 +392,20 @@ Defaults preserve the previous scan behavior. Example:
  /analysis/binance/formations/scan?direction=up&state=confirmed&max_confirmation_age_bars=4&breakout_holding=true
 Rules use current ATR-based buffers and the rolling window; levels and ages
 can change on recomputation. This is not a persisted signal history.
+
+## Breakout volume support
+Every formation result exposes confirmation_volume (Binance base-asset volume),
+prior_volume_average, volume_ratio, volume_reference_bars=20, volume_supported
+and volume_support_threshold=1.5. The reference is the 20 candles strictly before
+the first price-confirmation candle. Neither that candle nor subsequent candles
+enter its average. No confirmation, insufficient reference history or a zero
+reference average yields a null ratio, not a zero or an infinite score.
+volume_supported means ratio >= 1.5, an experimental threshold rather than a
+calibrated prediction. It does not change historical price-confirmation status.
+
+Optional scan filter min_volume_ratio=1.5 excludes missing ratios and keeps
+ratios at or above the requested threshold. Default remains unfiltered.
+Combine with state=confirmed, max_confirmation_age_bars=4 and
+breakout_holding=true. Ratios are within-symbol comparisons; raw coin volumes
+must not be compared across different assets. Existing 24h quote-volume filters
+use USDT turnover and are separate.

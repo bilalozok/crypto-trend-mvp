@@ -42,6 +42,34 @@ def evaluate(rows, anchor, up, level, invalidation, buffer):
     return status, confirmed
 
 
+def confirmation_volume(rows, confirmed):
+    result = {
+        "confirmation_volume": None,
+        "prior_volume_average": None,
+        "volume_ratio": None,
+        "volume_reference_bars": 20,
+        "volume_supported": None,
+        "volume_support_threshold": 1.5,
+    }
+    if confirmed is None:
+        return result
+    opened = round(confirmed.timestamp() * 1000) - BAR
+    index = next((i for i, r in enumerate(rows) if r.open_time == opened), None)
+    if index is None:
+        return result
+    result["confirmation_volume"] = rows[index].volume
+    if index < 20:
+        return result
+    average = sum(r.volume for r in rows[index - 20 : index]) / 20
+    result["prior_volume_average"] = average
+    if average > 0:
+        ratio = rows[index].volume / average
+        if math.isfinite(ratio):
+            result["volume_ratio"] = ratio
+            result["volume_supported"] = ratio >= 1.5
+    return result
+
+
 def detect(rows):
     highs, lows = pivots(rows)
     atr = (
@@ -144,6 +172,7 @@ def detect(rows):
                 breakout_holding=(position == ("above" if up else "below")),
                 confirmation_threshold=threshold,
             )
+        result.update(confirmation_volume(rows, result["confirmed_at"]))
         results.append(result)
     return results
 
