@@ -20,6 +20,8 @@ NAMES = {
     "bear_flag": "Ayı bayrağı",
     "bull_pennant": "Boğa flaması",
     "bear_pennant": "Ayı flaması",
+    "triple_bottom": "Üçlü dip",
+    "triple_top": "Üçlü tepe",
 }
 
 
@@ -86,6 +88,8 @@ def detect(rows):
     from app.services.pennant_patterns import KINDS as PENNANT_KINDS
     from app.services.pennant_patterns import detect_pennant
     from app.services.sloped_patterns import KINDS, detect_sloped
+    from app.services.triple_patterns import KINDS as TRIPLE_KINDS
+    from app.services.triple_patterns import detect_triple
 
     highs, lows = pivots(rows)
     atr = (
@@ -99,6 +103,9 @@ def detect(rows):
     buffer = max(rows[-1].close * 0.001, atr * 0.2)
     results = []
     for kind, name in NAMES.items():
+        if kind in TRIPLE_KINDS:
+            results.append(detect_triple(rows, highs, lows, kind, name, tolerance, buffer))
+            continue
         if kind in PENNANT_KINDS:
             results.append(detect_pennant(rows, highs, lows, kind, name, atr, tolerance, buffer))
             continue

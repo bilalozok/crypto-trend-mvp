@@ -503,3 +503,15 @@ Timing, age, volume ratio and frozen confirmation levels use the shared rules.
 pole_points, pole_move_pct and pennant_retracement_ratio explain the structure.
 The existing chart draws the pole and converging boundaries. These experimental
 continuation rules are not calibrated probabilities.
+
+## Triple bottom and triple top
+triple_bottom and triple_top extend the registry to fifteen.
+Three consecutive strict pivots must agree within tolerance. Adjacent spacing
+is 6–50 bars with a duration ratio 0.5–2, total span <=100 bars, and the last
+touch within 40 bars. Both intervening reversals must move at least 2 tolerances
+away from all three extrema. Bottom breakout uses the higher intervening high;
+top breakout uses the lower intervening low, requiring the close to clear both.
+Invalidation uses the outermost touch plus the existing directional buffer.
+Confirmation waits for third-pivot availability and shares age/volume rules.
+The chart labels all three extrema and both intervening reversals.
+These geometric rules do not yet require an earlier trend or compute targets.
