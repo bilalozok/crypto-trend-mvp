@@ -67,10 +67,10 @@ def test_flat_data_no_patterns_or_pivots():
 def test_wick_does_not_confirm_and_invalidation_after_confirmation():
     rows = rows_from_points([(0, 99), (199, 99)])
     rows[198].high = 110
-    assert evaluate(rows, 197, True, 100, 90, 0.5)[0] == "forming"
+    assert evaluate(rows, 195, True, 100, 90, 0.5)[0] == "forming"
     rows[198].close = 101
     rows[199].close = 89
-    status, confirmed = evaluate(rows, 197, True, 100, 90, 0.5)
+    status, confirmed = evaluate(rows, 195, True, 100, 90, 0.5)
     assert status == "invalidated"
     assert confirmed is not None
 

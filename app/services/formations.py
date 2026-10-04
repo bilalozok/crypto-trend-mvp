@@ -31,7 +31,8 @@ def pivots(rows):
 
 def evaluate(rows, anchor, up, level, invalidation, buffer):
     status, confirmed = "forming", None
-    for row in rows[anchor + 1 :]:
+    # The final pivot is observable only after three right-hand candles close.
+    for row in rows[anchor + 3 :]:
         invalid = row.close < invalidation - buffer if up else (row.close > invalidation + buffer)
         crossed = row.close > level + buffer if up else row.close < level - buffer
         if invalid:
@@ -150,6 +151,7 @@ def detect(rows):
             "confirmed_at": None,
             "start_time": None,
             "anchor_time": None,
+            "structure_available_at": None,
             "reason": "Yakın tarihli yapı bu kuralları karşılamıyor.",
             "last_close": rows[-1].close,
             "last_candle_close_time": timestamp(rows[-1].open_time + BAR),
@@ -176,6 +178,7 @@ def detect(rows):
                 reason=reasons[status],
                 start_time=timestamp(rows[start].open_time),
                 anchor_time=timestamp(rows[anchor].open_time),
+                structure_available_at=timestamp(rows[anchor + 3].open_time + BAR),
             )
         if candidate:
             threshold = level + buffer if up else level - buffer

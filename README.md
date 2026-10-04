@@ -422,3 +422,16 @@ or write data. Non-ready status suppresses overlays; invalid data also suppresse
 candles. Every pattern result now includes pivot_points (time, price, high/low).
 The chart uses local SVG/JavaScript without external chart scripts or CDNs.
 It is a review tool, not order entry or a backtest.
+
+## Pivot availability correction
+structure_available_at is the close of the third candle after the final selected
+pivot. A strict pivot cannot be identified earlier. Price-confirmation evaluation
+now starts at that close, preventing confirmation timestamps before the structure
+is observable. A prior breakout is eligible only if price is still beyond the
+buffered threshold at an observable close. Volume support and confirmation age
+use this first eligible confirmation candle. The experimental geometric method
+is otherwise unchanged.
+
+This corrects pivot look-ahead timing, not every possible backtest bias. Tolerance
+and confirmation buffers still use current-window ATR and last price. Historic
+performance must use walk-forward recomputation of each past window.
