@@ -1,5 +1,5 @@
-import importlib
 import os
+import sys
 from logging.config import fileConfig
 from pathlib import Path
 
@@ -7,81 +7,55 @@ from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 
+ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
 config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# --- Base import (projene göre fallback'li) ---
-Base = None
-for mod_name in ("app.db.base", "app.db.database", "app.database"):
-    try:
-        mod = importlib.import_module(mod_name)
-        Base = getattr(mod, "Base", None)
-        if Base is not None:
-            break
-    except Exception:
-        pass
+database_url = os.getenv("DATABASE_URL")
+if database_url:
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+    config.set_main_option("sqlalchemy.url", database_url)
 
-if Base is None:
-    raise RuntimeError("Base bulunamadı. app/db/base.py veya eşdeğerinde Base tanımlı olmalı.")
-
-# --- Model modüllerini import et (autogenerate için) ---
-# app altındaki tüm py dosyalarını yüklemeye çalışıyoruz; hata verenleri geçiyoruz.
-app_dir = Path("app")
-for py in app_dir.rglob("*.py"):
-    if py.name == "__init__.py":
-        continue
-    mod = str(py.with_suffix("")).replace("/", ".")
-    try:
-        importlib.import_module(mod)
-    except Exception:
-        pass
+import app.db.models.candle  # noqa: F401,E402
+import app.db.models.feature  # noqa: F401,E402
+import app.db.models.signal  # noqa: F401,E402
+import app.db.models.symbol  # noqa: F401,E402
+import app.db.models.watchlist  # noqa: F401,E402
+from app.db.base import Base  # noqa: E402
 
 target_metadata = Base.metadata
 
 
-def get_database_url() -> str:
-    return os.getenv("DATABASE_URL") or os.getenv("SQLALCHEMY_DATABASE_URL") or ""
-
-
 def run_migrations_offline() -> None:
-    url = get_database_url()
-    if not url:
-        raise RuntimeError("DATABASE_URL/SQLALCHEMY_DATABASE_URL yok.")
+    url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
         target_metadata=target_metadata,
         literal_binds=True,
-        dialect_opts={"paramstyle": "named"},
         compare_type=True,
-        compare_server_default=True,
+        dialect_opts={"paramstyle": "named"},
     )
     with context.begin_transaction():
         context.run_migrations()
 
 
 def run_migrations_online() -> None:
-    url = get_database_url()
-    if not url:
-        raise RuntimeError("DATABASE_URL/SQLALCHEMY_DATABASE_URL yok.")
-
-    cfg = config.get_section(config.config_ini_section) or {}
-    cfg["sqlalchemy.url"] = url
-
     connectable = engine_from_config(
-        cfg,
+        config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
-        future=True,
     )
-
     with connectable.connect() as connection:
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
             compare_type=True,
-            compare_server_default=True,
         )
         with context.begin_transaction():
             context.run_migrations()
