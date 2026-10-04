@@ -528,3 +528,17 @@ fitiller kanalın toleranslı sınırlarını aşamaz.
 Üçüncü sağ komşu mum kapandıktan sonra yönlü kırılım ve karşı sınırda
 geçersizleşme değerlendirilir. Mevcut hacim, teyit yaşı ve grafik alanları
 kullanılır; eşikler deneysel kurallardır, başarı olasılığı değildir.
+
+
+### Deneysel fincan-kulp ve ters fincan-kulp
+
+Gövde 24–100 mumdur; iki kenar tolerans içinde yakın olmalıdır. Gövdenin
+uç noktası genişliğin %30–70 bölgesinde, derinliği en az dört toleranstır.
+Dip/tepe çevresindeki yedi kapanışın en az beşi derinliğin alt %35 bölgesinde
+olmalıdır; iki çeyrek noktada ara yükseklik aranır. Bu geometrik yaklaşım
+keskin V yapıları dışlamaya çalışır; eğri uydurma veya başarı olasılığı değildir.
+Kulp 4–24 mum ve gövdenin en fazla yarısı uzunluğunda, derinliği gövdenin
+%10–50'sidir. Kulp pivotunun üç sağ komşusu kapandıktan sonra iki kenarın
+ötesindeki kapanış teyit olur; kulp uç sınırı geçersizleşme seviyesidir.
+Ters yapı aynı kuralları aynalayarak kullanır. Mevcut hacim, teyit yaşı,
+tarama ve grafik alanları korunur.

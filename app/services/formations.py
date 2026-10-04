@@ -24,6 +24,8 @@ NAMES = {
     "triple_top": "Üçlü tepe",
     "bull_rectangle": "Yükseliş dikdörtgeni",
     "bear_rectangle": "Düşüş dikdörtgeni",
+    "cup_and_handle": "Fincan-kulp",
+    "inverse_cup_and_handle": "Ters fincan-kulp",
 }
 
 
@@ -85,6 +87,8 @@ def confirmation_volume(rows, confirmed):
 
 
 def detect(rows):
+    from app.services.cup_patterns import KINDS as CUP_KINDS
+    from app.services.cup_patterns import detect_cup
     from app.services.flag_patterns import KINDS as FLAG_KINDS
     from app.services.flag_patterns import detect_flag
     from app.services.pennant_patterns import KINDS as PENNANT_KINDS
@@ -107,6 +111,9 @@ def detect(rows):
     buffer = max(rows[-1].close * 0.001, atr * 0.2)
     results = []
     for kind, name in NAMES.items():
+        if kind in CUP_KINDS:
+            results.append(detect_cup(rows, highs, lows, kind, name, tolerance, buffer))
+            continue
         if kind in RECTANGLE_KINDS:
             results.append(detect_rectangle(rows, highs, lows, kind, name, tolerance, buffer))
             continue
