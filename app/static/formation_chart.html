@@ -71,7 +71,7 @@ function draw(){
   line(p.breakout_level,"#245fd0","6 3");line(p.confirmation_threshold,"#8259b8","2 3");line(p.invalidation_level,"#c93b47","6 3");
   const points=(p.pivot_points||[]).map(pt=>({pt,i:rows.findIndex(r=>r.open_time===Date.parse(pt.open_time))})).filter(a=>a.i>=0);
   for(const kind of ["high","low"]){const group=points.filter(a=>a.pt.kind===kind).sort((a,b)=>a.i-b.i);if(group.length>1)add("polyline",{points:group.map(a=>x(a.i)+","+y(a.pt.price)).join(" "),fill:"none",stroke:"#8259b8","stroke-width":2})}
-  points.forEach(a=>{add("circle",{cx:x(a.i),cy:y(a.pt.price),r:5,fill:"#8259b8",stroke:"white","stroke-width":1});const n=text(a.pt.kind==="low"?"Dip":"Tepe",x(a.i)+6,y(a.pt.price)-8,"#8259b8");n.setAttribute("font-size","10")});
+  points.forEach(a=>{add("circle",{cx:x(a.i),cy:y(a.pt.price),r:5,fill:"#8259b8",stroke:"white","stroke-width":1});const n=text(a.pt.label||(a.pt.kind==="low"?"Dip":"Tepe"),x(a.i)+6,y(a.pt.price)-8,"#8259b8");n.setAttribute("font-size","10")});
   if(p.confirmed_at){const i=rows.findIndex(r=>r.open_time+900000===Date.parse(p.confirmed_at));if(i>=0){add("line",{x1:x(i),x2:x(i),y1:top,y2:500,stroke:"#13816b","stroke-dasharray":"3 3"});text("Teyit",Math.min(x(i)+5,right-40),18,"#13816b")}}
   detail("Durum",states[p.status]);detail("Kırılım",format(p.breakout_level));detail("Teyit eşiği",format(p.confirmation_threshold));
   detail("Geçersizleşme",format(p.invalidation_level));detail("Teyit yaşı",p.confirmation_age_bars==null?"—":p.confirmation_age_bars+" mum");

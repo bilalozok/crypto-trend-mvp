@@ -11,6 +11,8 @@ NAMES = {
     "double_top": "Çift tepe",
     "ascending_triangle": "Yükselen üçgen",
     "descending_triangle": "Alçalan üçgen",
+    "head_and_shoulders": "Omuz-baş-omuz",
+    "inverse_head_and_shoulders": "Ters omuz-baş-omuz",
 }
 
 
@@ -84,7 +86,7 @@ def detect(rows):
     buffer = max(rows[-1].close * 0.001, atr * 0.2)
     results = []
     for kind, name in NAMES.items():
-        up = kind in {"double_bottom", "ascending_triangle"}
+        up = kind in {"double_bottom", "ascending_triangle", "inverse_head_and_shoulders"}
         candidate = None
         selected_points = []
         if kind.startswith("double"):
@@ -107,7 +109,7 @@ def detect(rows):
                         }
                         for index, value in (a, b)
                     ]
-        else:
+        elif kind.endswith("triangle"):
             flat, slope = (highs[-3:], lows[-3:]) if up else (lows[-3:], highs[-3:])
             if len(flat) == len(slope) == 3:
                 start = min(flat[0][0], slope[0][0])
@@ -140,6 +142,55 @@ def detect(rows):
                         )
                         for index, value in points
                     ]
+        else:
+            # This version deliberately requires an approximately horizontal neckline.
+            points = lows if up else highs
+            for a, head, b in zip(points, points[1:], points[2:], strict=False):
+                left_span, right_span = head[0] - a[0], b[0] - head[0]
+                if (
+                    not 6 <= left_span <= 60
+                    or not 6 <= right_span <= 60
+                    or not 0.5 <= left_span / right_span <= 2
+                    or b[0] - a[0] > 100
+                    or len(rows) - b[0] > 40
+                    or abs(a[1] - b[1]) > tolerance
+                ):
+                    continue
+                prominence = min(a[1], b[1]) - head[1] if up else (head[1] - max(a[1], b[1]))
+                if prominence < 2 * tolerance:
+                    continue
+                if up:
+                    neck1 = max(range(a[0] + 1, head[0]), key=lambda i: rows[i].high)
+                    neck2 = max(range(head[0] + 1, b[0]), key=lambda i: rows[i].high)
+                    v1, v2 = rows[neck1].high, rows[neck2].high
+                else:
+                    neck1 = min(range(a[0] + 1, head[0]), key=lambda i: rows[i].low)
+                    neck2 = min(range(head[0] + 1, b[0]), key=lambda i: rows[i].low)
+                    v1, v2 = rows[neck1].low, rows[neck2].low
+                if abs(v1 - v2) > tolerance:
+                    continue
+                level = (v1 + v2) / 2
+                shoulder_depth = level - max(a[1], b[1]) if up else (min(a[1], b[1]) - level)
+                if shoulder_depth < 2 * tolerance:
+                    continue
+                candidate = (a[0], b[0], level, b[1])
+                selected_points = [
+                    {
+                        "open_time": timestamp(rows[index].open_time),
+                        "price": price,
+                        "kind": "low" if up else "high",
+                        "label": label,
+                    }
+                    for (index, price), label in ((a, "Sol omuz"), (head, "Baş"), (b, "Sağ omuz"))
+                ] + [
+                    {
+                        "open_time": timestamp(rows[index].open_time),
+                        "price": price,
+                        "kind": "high" if up else "low",
+                        "label": "Boyun",
+                    }
+                    for index, price in ((neck1, v1), (neck2, v2))
+                ]
         result = {
             "pattern": kind,
             "name": name,

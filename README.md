@@ -435,3 +435,18 @@ is otherwise unchanged.
 This corrects pivot look-ahead timing, not every possible backtest bias. Tolerance
 and confirmation buffers still use current-window ATR and last price. Historic
 performance must use walk-forward recomputation of each past window.
+
+## Head-and-shoulders patterns
+head_and_shoulders (down) and inverse_head_and_shoulders (up) extend the same
+experimental rules to six patterns. This first version only recognizes roughly
+horizontal necklines: the two intervening extremes must agree within tolerance.
+Sloping necklines are deliberately rejected; they are not flattened arbitrarily.
+Three consecutive pivots define left shoulder, head and right shoulder.
+The head must exceed both shoulders by at least 2 tolerances; shoulders must
+agree within tolerance and stand at least 2 tolerances away from the neckline.
+Each side spans 6–60 bars, their duration ratio is 0.5–2, total span <=100 bars,
+and the right shoulder is within 40 bars. The neckline is the average of the two
+intervening extremes. Invalidation uses the right shoulder plus the existing
+directional buffer. Confirmation waits for right-shoulder pivot availability.
+Chart labels identify shoulders, head and neckline points.
+These geometric patterns do not yet enforce a preceding trend or target price.
