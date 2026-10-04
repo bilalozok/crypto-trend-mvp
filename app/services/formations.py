@@ -26,6 +26,7 @@ NAMES = {
     "bear_rectangle": "Düşüş dikdörtgeni",
     "cup_and_handle": "Fincan-kulp",
     "inverse_cup_and_handle": "Ters fincan-kulp",
+    "broadening_triangle": "Genişleyen üçgen",
 }
 
 

@@ -81,7 +81,7 @@ def test_chart_and_scan_use_expanded_pattern_registry(client, monkeypatch):
         )
         db.commit()
     chart = client.get("/analysis/binance/chart-data?symbol=BTCUSDT").json()
-    assert len(chart["patterns"]) == 19
+    assert len(chart["patterns"]) == 20
     result = client.get("/analysis/binance/formations/scan?direction=up&state=confirmed").json()
     names = {p["pattern"] for p in result["matches"][0]["patterns"]}
     assert "inverse_head_and_shoulders" in names

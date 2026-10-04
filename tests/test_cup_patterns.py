@@ -75,7 +75,7 @@ def test_early_breakout_not_backdated():
 
 def test_registry_includes_cups():
     results = {p["pattern"]: p for p in detect(structure())}
-    assert len(results) == 19
+    assert len(results) == 20
     assert results["cup_and_handle"]["status"] == "confirmed"
 
 

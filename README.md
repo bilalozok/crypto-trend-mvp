@@ -542,3 +542,16 @@ Kulp 4–24 mum ve gövdenin en fazla yarısı uzunluğunda, derinliği gövdeni
 ötesindeki kapanış teyit olur; kulp uç sınırı geçersizleşme seviyesidir.
 Ters yapı aynı kuralları aynalayarak kullanır. Mevcut hacim, teyit yaşı,
 tarama ve grafik alanları korunur.
+
+
+### Deneysel genişleyen üçgen
+
+Üç üst ve üç alt pivot üzerinden mevcut çizgi uydurma yöntemi kullanılır.
+Üst çizgi pozitif, alt çizgi negatif eğimli olmalı; yapı sonunda kanal
+genişliği başlangıca göre en az %25 artmalıdır. İlk genişlik iki toleranstan
+fazladır. Mevcut artık hata, fitillerin kanal içinde kalması, 12–100 mum gövde, son 40 mum
+pivot ve asgari eğim kuralları korunur. Oluşurken yön nötrdür; son pivotun
+üç sağ komşusu kapandıktan sonra ilk yönlü kapanış kırılımı teyit edilir.
+Teyitte seviyeler sabitlenir; karşı sınır ihlali geçersizleşmedir. Gelecek
+tepe kesişimi yoktur; teyitsiz yapı son pivottan 60 mum sonra sona erer.
+Grafikte iki genişleyen çizgi ve pivotlar gösterilir. Başarı olasılığı değildir.
