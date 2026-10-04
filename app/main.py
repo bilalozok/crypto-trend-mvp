@@ -8,8 +8,10 @@ from app.db.base import Base
 from app.db.models.candle import Candle
 from app.db.session import SessionLocal, engine
 from app.schemas import CandleOut
+from app.schemas.market import BinancePreviewOut, SpotCatalogOut
 from app.schemas.signal import TrendOut
 from app.services.binance import fetch_klines
+from app.services.binance_market import BinanceMarketError, catalog, preview_candles
 from app.services.candle_ingestion import upsert_candles
 from app.services.signal_engine import get_trend
 from app.utils.timeframes import Interval
@@ -98,3 +100,37 @@ def trend_summary(
         raise HTTPException(status_code=422, detail="short_period must be less than long_period")
     now_ms = int(datetime.now(UTC).timestamp() * 1000)
     return get_trend(db, symbol.upper(), interval, short_period, long_period, now_ms)
+
+
+@app.get("/market/binance/symbols", response_model=SpotCatalogOut)
+def binance_spot_symbols(
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+    min_quote_volume: float = Query(0, ge=0, allow_inf_nan=False),
+) -> SpotCatalogOut:
+    """Active Binance Spot USDT pairs, ordered by rolling 24h USDT volume."""
+    try:
+        as_of, rows = catalog.snapshot()
+    except BinanceMarketError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    filtered = [row for row in rows if row.quote_volume_24h >= min_quote_volume]
+    return SpotCatalogOut(
+        as_of=as_of,
+        min_quote_volume=min_quote_volume,
+        total=len(filtered),
+        limit=limit,
+        offset=offset,
+        symbols=filtered[offset : offset + limit],
+    )
+
+
+@app.get("/market/binance/candles/preview", response_model=BinancePreviewOut)
+def binance_candle_preview(
+    symbol: str = Query(..., min_length=3, max_length=64),
+    limit: int = Query(25, ge=2, le=100),
+) -> BinancePreviewOut:
+    """Read closed 15m Binance candles without storing or mixing legacy data."""
+    try:
+        return preview_candles(symbol, limit)
+    except BinanceMarketError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc

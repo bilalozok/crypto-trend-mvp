@@ -280,3 +280,29 @@ Postgres servis adı farklıysa referansı o servis adıyla seçin.
 PostgreSQL'e özel eşzamanlı upsert ve transaction rollback testleri
 `Worker PostgreSQL` CI işinde PostgreSQL 18 ile çalışır.
 `TEST_POSTGRES_URL` yalnızca bu test veritabanı için kullanılır; üretim URL'sini vermeyin.
+
+## Binance Spot USDT kataloğu (ilk aşama)
+
+Yeni piyasa sorguları yalnızca `https://data-api.binance.vision` adresinden Binance
+Spot verisi okur; OKX fallback'i yoktur. API anahtarı gerekmez.
+
+- `GET /market/binance/symbols?limit=100&offset=0&min_quote_volume=0`
+  Aktif (`TRADING`), Spot işlemlere açık USDT paritelerini listeler. Katalog 24 saatlik
+  USDT işlem hacmine göre azalan sıralanır. `total` filtrelenmiş toplam parite sayısıdır.
+  Sayfalama için `offset` kullanılır. Hacim bir sinyal veya yükseliş olasılığı değildir.
+- Katalog/hacim snapshot'ı işlem başına 5 dakika önbelleğe alınır; `as_of` alındığı
+  zamandır. Stablecoin ve diğer USDT spot pariteleri şimdilik ayrıca elenmez.
+- `GET /market/binance/candles/preview?symbol=BTCUSDT&limit=25`
+  Binance'den 15m mumları okur; kapanmamış mumu dışarıda bırakır.
+  `limit` sağlayıcıdan istenen mum sayısıdır; açık mum elendiği için sonuç daha kısa olabilir.
+  Yanıtta `exchange=binance`, `market=spot`, `stored=false` bulunur.
+- Bu iki endpoint veritabanına yazmaz. Mevcut `candles` tablosundaki eski Binance/OKX
+  kayıtları bu yanıtlarda kullanılmaz.
+- Mevcut `/candles/fetch`, `/candles/latest`, `/signals/trend` ve eski worker henüz
+  eski veri akışıdır. Onları Binance kaynaklı kabul etmeyin.
+- Binance erişim engeli veya rate limit durumunda 503; hatalı sağlayıcı verisinde
+  502 döner. Başka borsadan veriyle doldurulmaz.
+- Sonraki aşama: kaynakları ayrılmış tablolar, 15m geçmiş veri doldurma ve tüm
+  katalog için toplu worker. Bu ilk paket tüm pariteleri otomatik toplamayı etkinleştirmez.
+
+Kaynak: https://developers.binance.com/en/docs/products/spot/faqs/market_data_only
