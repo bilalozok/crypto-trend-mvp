@@ -515,3 +515,16 @@ Invalidation uses the outermost touch plus the existing directional buffer.
 Confirmation waits for third-pivot availability and shares age/volume rules.
 The chart labels all three extrema and both intervening reversals.
 These geometric rules do not yet require an earlier trend or compute targets.
+
+
+### Deneysel yatay dikdörtgenler
+
+Yükseliş/düşüş dikdörtgenleri üç destek ve üç direnç temasını sırayla arar.
+Her sınırdaki fiyat farkı mevcut toleransı aşamaz; kanal genişliği en az
+dört tolerans olmalıdır. Ardışık temaslar 3–25, toplam yapı 15–100 mumdur;
+son temas son 40 mum içinde olmalıdır. Yapıdan önceki 12 mumdaki yönlü
+kapanış hareketi en az kanal genişliği kadar olmalıdır. Yapı içindeki
+fitiller kanalın toleranslı sınırlarını aşamaz.
+Üçüncü sağ komşu mum kapandıktan sonra yönlü kırılım ve karşı sınırda
+geçersizleşme değerlendirilir. Mevcut hacim, teyit yaşı ve grafik alanları
+kullanılır; eşikler deneysel kurallardır, başarı olasılığı değildir.
