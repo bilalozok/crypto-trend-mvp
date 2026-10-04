@@ -450,3 +450,24 @@ intervening extremes. Invalidation uses the right shoulder plus the existing
 directional buffer. Confirmation waits for right-shoulder pivot availability.
 Chart labels identify shoulders, head and neckline points.
 These geometric patterns do not yet enforce a preceding trend or target price.
+
+## Converging sloped boundaries
+symmetrical_triangle, rising_wedge and falling_wedge extend the registry to nine.
+Three high pivots and three low pivots define ordinary least-squares boundaries.
+Both line residuals must fit within tolerance; observed candles up to the last
+pivot must remain within the channel (with tolerance). Boundaries must interleave,
+span 12–100 bars, contract at least 20%, and retain width >2 tolerances at the last
+pivot. Each slope must move at least max(tolerance, 0.5 ATR) over the span.
+The apex must be after pivot availability and within 100 bars of the last pivot.
+Triangles have opposing slopes; rising wedges have positive slopes with faster
+rising support; falling wedges have negative slopes with faster falling resistance.
+
+Forming symmetrical triangles have neutral direction and no single breakout level.
+Their first buffered close above/below the channel determines direction.
+Rising wedges expect down; falling wedges expect up. Opposite breakouts invalidate
+these directional setups. Price confirmation starts only after pivot availability.
+Before confirmation boundaries move with each candle; at confirmation breakout and
+opposite invalidation levels freeze. A setup with no confirmation before its apex
+is invalidated as expired. boundary_lines expose fitted segments and apex_time;
+the chart plots them. Filters up/down exclude unconfirmed neutral triangles.
+These are experimental geometry, not calibrated direction forecasts.

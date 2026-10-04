@@ -13,6 +13,9 @@ NAMES = {
     "descending_triangle": "Alçalan üçgen",
     "head_and_shoulders": "Omuz-baş-omuz",
     "inverse_head_and_shoulders": "Ters omuz-baş-omuz",
+    "symmetrical_triangle": "Simetrik üçgen",
+    "rising_wedge": "Yükselen takoz",
+    "falling_wedge": "Alçalan takoz",
 }
 
 
@@ -74,6 +77,8 @@ def confirmation_volume(rows, confirmed):
 
 
 def detect(rows):
+    from app.services.sloped_patterns import KINDS, detect_sloped
+
     highs, lows = pivots(rows)
     atr = (
         sum(
@@ -86,6 +91,9 @@ def detect(rows):
     buffer = max(rows[-1].close * 0.001, atr * 0.2)
     results = []
     for kind, name in NAMES.items():
+        if kind in KINDS:
+            results.append(detect_sloped(rows, highs, lows, kind, name, atr, tolerance, buffer))
+            continue
         up = kind in {"double_bottom", "ascending_triangle", "inverse_head_and_shoulders"}
         candidate = None
         selected_points = []

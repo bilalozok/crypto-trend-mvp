@@ -52,7 +52,7 @@ function draw(){
  el("reason").textContent=p?.reason||"Veri hazır olduğunda formasyonlar değerlendirilir.";
  if(!rows.length){text("Gösterilecek geçerli mum verisi yok.",30,80);return}
  const left=25,right=1000,top=25,bottom=390,width=right-left,step=width/rows.length;
- const levels=p?[p.breakout_level,p.invalidation_level,p.confirmation_threshold].filter(v=>v!=null):[];
+ const levels=p?[p.breakout_level,p.invalidation_level,p.confirmation_threshold,...(p.boundary_lines||[]).flatMap(l=>[l.start_price,l.end_price])].filter(v=>v!=null):[];
  const min=Math.min(...rows.map(r=>r.low),...levels),max=Math.max(...rows.map(r=>r.high),...levels);
  const pad=Math.max((max-min)*.07,max*.0001),lo=min-pad,hi=max+pad;
  const y=v=>bottom-(v-lo)/(hi-lo)*(bottom-top),x=i=>left+(i+.5)*step;
@@ -71,9 +71,10 @@ function draw(){
   line(p.breakout_level,"#245fd0","6 3");line(p.confirmation_threshold,"#8259b8","2 3");line(p.invalidation_level,"#c93b47","6 3");
   const points=(p.pivot_points||[]).map(pt=>({pt,i:rows.findIndex(r=>r.open_time===Date.parse(pt.open_time))})).filter(a=>a.i>=0);
   for(const kind of ["high","low"]){const group=points.filter(a=>a.pt.kind===kind).sort((a,b)=>a.i-b.i);if(group.length>1)add("polyline",{points:group.map(a=>x(a.i)+","+y(a.pt.price)).join(" "),fill:"none",stroke:"#8259b8","stroke-width":2})}
+  for(const line of p.boundary_lines||[]){const a=rows.findIndex(r=>r.open_time===Date.parse(line.start_time)),b=rows.findIndex(r=>r.open_time===Date.parse(line.end_time));if(a>=0&&b>=0)add("line",{x1:x(a),x2:x(b),y1:y(line.start_price),y2:y(line.end_price),stroke:"#245fd0","stroke-width":2})}
   points.forEach(a=>{add("circle",{cx:x(a.i),cy:y(a.pt.price),r:5,fill:"#8259b8",stroke:"white","stroke-width":1});const n=text(a.pt.label||(a.pt.kind==="low"?"Dip":"Tepe"),x(a.i)+6,y(a.pt.price)-8,"#8259b8");n.setAttribute("font-size","10")});
   if(p.confirmed_at){const i=rows.findIndex(r=>r.open_time+900000===Date.parse(p.confirmed_at));if(i>=0){add("line",{x1:x(i),x2:x(i),y1:top,y2:500,stroke:"#13816b","stroke-dasharray":"3 3"});text("Teyit",Math.min(x(i)+5,right-40),18,"#13816b")}}
-  detail("Durum",states[p.status]);detail("Kırılım",format(p.breakout_level));detail("Teyit eşiği",format(p.confirmation_threshold));
+  detail("Durum",states[p.status]);detail("Yön",({up:"Yukarı",down:"Aşağı",neutral:"Kırılım bekleniyor"})[p.direction]);detail("Kırılım",format(p.breakout_level));detail("Teyit eşiği",format(p.confirmation_threshold));
   detail("Geçersizleşme",format(p.invalidation_level));detail("Teyit yaşı",p.confirmation_age_bars==null?"—":p.confirmation_age_bars+" mum");
   detail("Hacim oranı",p.volume_ratio==null?"—":format(p.volume_ratio)+"×");detail("Son kapanış",format(p.last_close));
   detail("Eşiği koruyor",p.breakout_holding==null?"—":p.breakout_holding?"Evet":"Hayır");
