@@ -2,15 +2,24 @@ from datetime import UTC, datetime
 from typing import Annotated, Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Query
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.db.base import Base
+from app.db.models.binance_spot import BinanceSpotCandle
 from app.db.models.candle import Candle
 from app.db.session import SessionLocal, engine
 from app.schemas import CandleOut
-from app.schemas.market import BinancePreviewOut, SpotCatalogOut
+from app.schemas.market import (
+    BinancePreviewOut,
+    CollectionCoverageOut,
+    SpotCatalogOut,
+    StoredBinanceCandlesOut,
+)
 from app.schemas.signal import TrendOut
 from app.services.binance import fetch_klines
+from app.services.binance_collection import now_ms
+from app.services.binance_coverage import coverage
 from app.services.binance_market import BinanceMarketError, catalog, preview_candles
 from app.services.candle_ingestion import upsert_candles
 from app.services.signal_engine import get_trend
@@ -32,7 +41,8 @@ DbDep = Annotated[Session, Depends(get_db)]
 
 @app.on_event("startup")
 def on_startup() -> None:
-    Base.metadata.create_all(bind=engine)
+    if engine.dialect.name == "sqlite":
+        Base.metadata.create_all(bind=engine)
 
 
 @app.get("/")
@@ -134,3 +144,42 @@ def binance_candle_preview(
         return preview_candles(symbol, limit)
     except BinanceMarketError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+
+@app.get("/market/binance/coverage", response_model=CollectionCoverageOut)
+def binance_collection_coverage(
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+    candles_required: int = Query(200, ge=1, le=1000),
+    db: DbDep = None,
+) -> CollectionCoverageOut:
+    try:
+        return CollectionCoverageOut.model_validate(
+            coverage(db, limit, offset, candles_required, now_ms())
+        )
+    except SQLAlchemyError as exc:
+        raise HTTPException(
+            status_code=503, detail="Binance collection database unavailable"
+        ) from exc
+
+
+@app.get("/market/binance/candles", response_model=StoredBinanceCandlesOut)
+def stored_binance_candles(
+    symbol: str = Query(..., min_length=3, max_length=64),
+    limit: int = Query(100, ge=1, le=1000),
+    db: DbDep = None,
+) -> StoredBinanceCandlesOut:
+    symbol = symbol.upper()
+    try:
+        rows = (
+            db.query(BinanceSpotCandle)
+            .filter(BinanceSpotCandle.symbol == symbol)
+            .order_by(BinanceSpotCandle.open_time.desc())
+            .limit(limit)
+            .all()
+        )
+    except SQLAlchemyError as exc:
+        raise HTTPException(
+            status_code=503, detail="Binance collection database unavailable"
+        ) from exc
+    return StoredBinanceCandlesOut(symbol=symbol, candles=list(reversed(rows)))

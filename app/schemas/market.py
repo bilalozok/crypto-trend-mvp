@@ -33,3 +33,35 @@ class BinancePreviewOut(BaseModel):
     as_of: datetime
     stored: Literal[False] = False
     candles: list[CandleOut]
+
+
+class CollectionSymbolOut(SpotSymbolOut):
+    stablecoin_candidate: bool
+    candles_count: int
+    history_sufficient: bool
+    missing_candles_in_stored_range: int
+    stale: bool
+    latest_candle_open_time: datetime | None
+    last_success_time: datetime | None
+    last_error: str | None
+
+
+class CollectionCoverageOut(BaseModel):
+    exchange: Literal["binance"] = "binance"
+    market: Literal["spot"] = "spot"
+    interval: Literal["15m"] = "15m"
+    as_of: datetime
+    total: int
+    limit: int
+    offset: int
+    candles_required: int
+    symbols: list[CollectionSymbolOut]
+
+
+class StoredBinanceCandlesOut(BaseModel):
+    exchange: Literal["binance"] = "binance"
+    market: Literal["spot"] = "spot"
+    interval: Literal["15m"] = "15m"
+    symbol: str
+    stored: Literal[True] = True
+    candles: list[CandleOut]

@@ -14,7 +14,7 @@ if str(ROOT_DIR) not in sys.path:
 config = context.config
 
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 database_url = os.getenv("DATABASE_URL")
 if database_url:
@@ -22,6 +22,7 @@ if database_url:
         database_url = database_url.replace("postgres://", "postgresql://", 1)
     config.set_main_option("sqlalchemy.url", database_url)
 
+import app.db.models.binance_spot  # noqa: F401,E402
 import app.db.models.candle  # noqa: F401,E402
 import app.db.models.feature  # noqa: F401,E402
 import app.db.models.signal  # noqa: F401,E402

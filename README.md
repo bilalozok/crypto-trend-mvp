@@ -306,3 +306,33 @@ Spot verisi okur; OKX fallback'i yoktur. API anahtarı gerekmez.
   katalog için toplu worker. Bu ilk paket tüm pariteleri otomatik toplamayı etkinleştirmez.
 
 Kaynak: https://developers.binance.com/en/docs/products/spot/faqs/market_data_only
+
+## Binance Spot 15m collection
+
+The isolated `binance_spot_symbols` and `binance_spot_candles` tables preserve
+Binance provenance. Existing `candles` data and the legacy trend endpoint remain
+separate. Apply `alembic upgrade head` before deploying this version; PostgreSQL
+tables are managed by migrations, rather than application startup.
+
+Switch the Railway candle-worker start command to
+`python -m app.workers.market_worker`. Keep the five-minute cron schedule and
+restart policy Never. Use the same PostgreSQL DATABASE_URL as the API.
+Optional settings: MARKET_BUDGET_SECONDS=180, MARKET_CONCURRENCY=4,
+MARKET_HISTORY_LIMIT=500 (initial closed candles per symbol).
+The worker targets every active Binance Spot USDT pair, prioritizing symbols with
+the oldest attempt. The time budget stops new submissions; in-flight requests
+may finish afterward. Deferred symbols resume on subsequent runs. A run does
+not guarantee that every pair was refreshed. Rate-limit and access errors stop
+new submissions; failures are recorded without exposing credentials.
+
+Initial history is limited to the configured candle count. Subsequent requests
+overlap stored candles and advance forward. Internal historical gaps are
+reported, not automatically repaired. Stablecoin candidates are marked using
+an explicit starting list, but are still collected.
+
+Read collection progress at `GET /market/binance/coverage`, with pagination and
+`candles_required` (default 200). It reports history size, freshness, gaps and
+last errors. Read stored Binance candles at
+`GET /market/binance/candles?symbol=BTCUSDT&limit=100`.
+The preview endpoint remains read-only. Formation analysis will use the new
+tables in a subsequent change.
