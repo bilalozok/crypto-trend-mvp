@@ -1,7 +1,8 @@
 import pytest
 from sqlalchemy.exc import IntegrityError
-from app.db.session import SessionLocal
+
 from app.db.models.candle import Candle
+from app.db.session import SessionLocal
 
 
 def test_unique_constraint_symbol_interval_open_time():
