@@ -183,3 +183,19 @@ def stored_binance_candles(
             status_code=503, detail="Binance collection database unavailable"
         ) from exc
     return StoredBinanceCandlesOut(symbol=symbol, candles=list(reversed(rows)))
+
+
+@app.get("/analysis/binance/formations")
+def formation_analysis(
+    db: DbDep,
+    symbol: str = Query(..., min_length=1, max_length=64, pattern=r"^[A-Za-z0-9]+$"),
+):
+    from app.services.formations import analyze
+
+    try:
+        result = analyze(db, symbol.upper(), now_ms())
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=503, detail="Analysis database unavailable") from exc
+    if result is None:
+        raise HTTPException(status_code=404, detail="Active Binance Spot USDT symbol not found")
+    return result

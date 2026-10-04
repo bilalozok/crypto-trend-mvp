@@ -336,3 +336,23 @@ last errors. Read stored Binance candles at
 `GET /market/binance/candles?symbol=BTCUSDT&limit=100`.
 The preview endpoint remains read-only. Formation analysis will use the new
 tables in a subsequent change.
+
+## Experimental formation analysis
+GET /analysis/binance/formations?symbol=BTCUSDT uses the latest 200 closed,
+contiguous, current Binance 15m candles. Non-ready statuses suppress patterns:
+insufficient_data, missing_data, invalid_data and stale_data.
+Unknown/inactive symbols return 404. No external requests or database writes occur.
+
+price_patterns_v1 detects double bottoms/tops and ascending/descending triangles.
+Strict pivots require three candles on each side. Double extrema must be adjacent,
+6–80 bars apart, with an intervening move of at least twice the tolerance.
+Triangles require three horizontal touches and three advancing opposite extrema.
+Anchors must be within 40 bars. Tolerance = max(0.3% last close, 0.5 ATR14);
+confirmation/invalidation buffer = max(0.1% last close, 0.2 ATR14).
+Breakouts use closes, not wicks. Output includes levels, timestamps, reasons and
+forming/confirmed/invalidated/not_detected states.
+
+These experimental geometric rules are not calibrated probabilities or order
+instructions. Irregular patterns may be missed and overlapping patterns may
+appear. States are recomputed, not persisted. Ranking, similarity and volume
+confirmation will be separate additions.
