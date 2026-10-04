@@ -120,22 +120,3 @@ def fetch_candles(
 
     created_or_updated.sort(key=lambda x: x.open_time)
     return created_or_updated
-
-
-@app.get("/debug/fetch-test")
-def debug_fetch_test(
-    symbol: str = "BTCUSDT",
-    interval: str = "1h",
-    limit: int = 5,
-):
-    try:
-        data = fetch_klines(symbol=symbol, interval=interval, limit=limit)
-        sample = data[0] if data else None
-        return {
-            "ok": True,
-            "count": len(data),
-            "sample": sample,
-            "sample_len": len(sample) if sample else 0,
-        }
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
