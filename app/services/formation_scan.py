@@ -17,6 +17,8 @@ def scan(
     state="confirmed",
     min_volume=0,
     include_stablecoins=False,
+    max_confirmation_age_bars=None,
+    breakout_holding=None,
 ):
     filters = [
         BinanceSpotSymbol.active.is_(True),
@@ -67,6 +69,14 @@ def scan(
             if p["status"] != "not_detected"
             and (state == "all" or p["status"] == state)
             and (direction == "all" or p["direction"] == direction)
+            and (
+                max_confirmation_age_bars is None
+                or (
+                    p.get("confirmation_age_bars") is not None
+                    and p["confirmation_age_bars"] <= max_confirmation_age_bars
+                )
+            )
+            and (breakout_holding is None or p.get("breakout_holding") is breakout_holding)
         ]
         if patterns:
             matches.append(
@@ -89,6 +99,8 @@ def scan(
         "state": state,
         "min_quote_volume": min_volume,
         "include_stablecoins": include_stablecoins,
+        "max_confirmation_age_bars": max_confirmation_age_bars,
+        "breakout_holding": breakout_holding,
         "total_eligible_symbols": total,
         "limit": limit,
         "offset": offset,

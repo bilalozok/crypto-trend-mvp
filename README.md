@@ -373,3 +373,22 @@ A window query reads at most 200 closed candles per selected coin into memory;
 there is no network fetch, write, or per-symbol database query.
 Separate page requests are live reads, not an immutable snapshot. Catalogue
 refreshes can move volume-ranked pages; deduplicate symbols when combining pages.
+
+## Confirmation age and current breakout position
+Formation results now include last_close, last_candle_close_time,
+confirmation_age_bars, distance_from_breakout_pct, breakout_position,
+breakout_holding and confirmation_threshold. Age counts closed 15m bars since
+the first detected confirmation (zero for the confirming candle). Distance is
+signed relative to the geometric breakout level, not the buffered threshold.
+Position is above/below/within_buffer using the current confirmation buffer.
+Holding means the last closed price is beyond the buffered breakout boundary
+in the pattern direction. It does not assert continuous holding or a retest.
+These fields do not redefine the historical confirmed/invalidated status.
+
+Scan filters: max_confirmation_age_bars=4 (inclusive) and breakout_holding=true.
+An age filter excludes patterns with no confirmation; holding alone does not restrict
+the historical pattern status. Combine state=confirmed for current confirmed candidates.
+Defaults preserve the previous scan behavior. Example:
+ /analysis/binance/formations/scan?direction=up&state=confirmed&max_confirmation_age_bars=4&breakout_holding=true
+Rules use current ATR-based buffers and the rolling window; levels and ages
+can change on recomputation. This is not a persisted signal history.

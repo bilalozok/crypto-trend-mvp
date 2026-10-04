@@ -102,6 +102,13 @@ def detect(rows):
             "start_time": None,
             "anchor_time": None,
             "reason": "Yakın tarihli yapı bu kuralları karşılamıyor.",
+            "last_close": rows[-1].close,
+            "last_candle_close_time": timestamp(rows[-1].open_time + BAR),
+            "confirmation_age_bars": None,
+            "distance_from_breakout_pct": None,
+            "breakout_position": None,
+            "breakout_holding": None,
+            "confirmation_threshold": None,
         }
         if candidate:
             start, anchor, level, floor = candidate
@@ -119,6 +126,23 @@ def detect(rows):
                 reason=reasons[status],
                 start_time=timestamp(rows[start].open_time),
                 anchor_time=timestamp(rows[anchor].open_time),
+            )
+        if candidate:
+            threshold = level + buffer if up else level - buffer
+            position = "within_buffer"
+            if rows[-1].close > level + buffer:
+                position = "above"
+            elif rows[-1].close < level - buffer:
+                position = "below"
+            age = None
+            if confirmed is not None:
+                age = (rows[-1].open_time + BAR - round(confirmed.timestamp() * 1000)) // BAR
+            result.update(
+                confirmation_age_bars=age,
+                distance_from_breakout_pct=(rows[-1].close / level - 1) * 100,
+                breakout_position=position,
+                breakout_holding=(position == ("above" if up else "below")),
+                confirmation_threshold=threshold,
             )
         results.append(result)
     return results

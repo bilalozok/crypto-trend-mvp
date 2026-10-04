@@ -210,6 +210,8 @@ def formation_scan(
     state: Literal["all", "forming", "confirmed", "invalidated"] = Query("confirmed"),
     min_quote_volume: float = Query(0, ge=0, allow_inf_nan=False),
     include_stablecoins: bool = Query(False),
+    max_confirmation_age_bars: int | None = Query(None, ge=0, le=200),
+    breakout_holding: bool | None = Query(None),
 ):
     from app.services.formation_scan import scan
 
@@ -223,6 +225,8 @@ def formation_scan(
             state,
             min_quote_volume,
             include_stablecoins,
+            max_confirmation_age_bars,
+            breakout_holding,
         )
     except SQLAlchemyError as exc:
         raise HTTPException(status_code=503, detail="Analysis database unavailable") from exc
