@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from typing import Annotated, Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Query
@@ -7,7 +8,10 @@ from app.db.base import Base
 from app.db.models.candle import Candle
 from app.db.session import SessionLocal, engine
 from app.schemas import CandleOut
+from app.schemas.signal import TrendOut
 from app.services.binance import fetch_klines
+from app.services.signal_engine import get_trend
+from app.utils.timeframes import Interval
 
 app = FastAPI(title="Crypto Trend MVP")
 
@@ -122,3 +126,18 @@ def fetch_candles(
 
     created_or_updated.sort(key=lambda x: x.open_time)
     return created_or_updated
+
+
+@app.get("/signals/trend", response_model=TrendOut)
+def trend_summary(
+    symbol: str = Query(..., min_length=3, max_length=30, pattern="^[A-Za-z0-9]+$"),
+    interval: Annotated[Interval, Query()] = "1h",
+    short_period: int = Query(5, ge=1, le=499),
+    long_period: int = Query(20, ge=2, le=500),
+    db: DbDep = None,
+) -> TrendOut:
+    """Compare SMAs of stored, closed candles; this request does not fetch new data."""
+    if short_period >= long_period:
+        raise HTTPException(status_code=422, detail="short_period must be less than long_period")
+    now_ms = int(datetime.now(UTC).timestamp() * 1000)
+    return get_trend(db, symbol.upper(), interval, short_period, long_period, now_ms)

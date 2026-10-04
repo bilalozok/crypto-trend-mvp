@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/bilalozok/crypto-trend-mvp/actions/workflows/ci.yml/badge.svg)](https://github.com/bilalozok/crypto-trend-mvp/actions/workflows/ci.yml)
 
-Basit bir **FastAPI + SQLite** tabanlı kripto mum verisi (candles) servisi.
+Basit bir **FastAPI + PostgreSQL/SQLite** tabanlı kripto mum verisi (candles) servisi.
 Amaç: veri çekme, saklama, son kayıtları listeleme ve test/lint/CI disiplinini oturtmak.
 
 ---
@@ -10,9 +10,9 @@ Amaç: veri çekme, saklama, son kayıtları listeleme ve test/lint/CI disiplini
 ## Özellikler
 
 - FastAPI REST API
-- SQLAlchemy ile SQLite persistency
+- SQLAlchemy ile PostgreSQL/SQLite persistency
 - Candle modelinde `UniqueConstraint` ile mükerrer kayıt koruması
-- Fetch işlemlerinde idempotent davranış (`skipped_existing`)
+- Fetch işlemlerinde mevcut mumları güncelleme ve mükerrer kayıtları önleme
 - Listeleme endpoint’inde:
   - `limit`
   - `offset`
@@ -118,7 +118,6 @@ curl -X POST "http://127.0.0.1:8010/candles/fetch/BTCUSDT"
 ### Son Mumları Listeleme
 
 - `GET /candles/latest`
-- `GET /candles/latest_raw`
 
 Örnek:
 
@@ -126,9 +125,21 @@ curl -X POST "http://127.0.0.1:8010/candles/fetch/BTCUSDT"
 curl "http://127.0.0.1:8010/candles/latest?symbol=BTCUSDT&limit=20&offset=0&sort=desc"
 ```
 
-### DB Debug
+### Trend özeti
 
-- `GET /debug/db`
+- `GET /signals/trend?symbol=BTCUSDT&interval=1h&short_period=5&long_period=20`
+- Önce `POST /candles/fetch/BTCUSDT?interval=1h&limit=100` ile veri doldurun.
+- Yalnızca kapanmış mumların kapanış fiyatları kullanılır. SMA(5), SMA(20) üzerinde ise
+  `up`, altında ise `down`, eşitse `flat` döner. Bu bir ortalama karşılaştırmasıdır.
+- `ready`: Hesaplama tamamlandı. `stale=true` ise en son beklenen kapanmış mum eksiktir.
+- `insufficient_data`: Uzun periyot için yeterli kapanmış mum yoktur.
+- `missing_data`: Hesaplama penceresinde mumlar arasında boşluk vardır.
+- `invalid_data`: Kapanış fiyatı sonlu ve pozitif değildir.
+- `stale`, en son kayıtlı mumun kapanışından en az bir interval geçtiğinde true olur.
+- Yanıttaki tarihlerin tamamı UTC'dir; veri çekilmez ve veritabanına yazılmaz.
+- Desteklenen interval'ler: 1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 6h, 12h, 1d, 1w.
+  Takvim ayı gibi değişken uzunluklu interval'ler desteklenmez.
+- short_period < long_period olmalıdır; long_period en fazla 500 olabilir.
 
 ---
 
