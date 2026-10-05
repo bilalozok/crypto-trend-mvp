@@ -674,3 +674,26 @@ ham fitiller üzerinden giriş açılışına göre ölçülür. Sinyaller çak�
 değildir. Kayıtlı kısa pencere, güncel aktif semboller, sabit maliyet varsayımı
 ve küçük örneklem nedeniyle sonuç kalibre edilmiş gelecek olasılığı değildir.
 Endpoint salt okunurdur; eski veri çekmez, emir veya kayıt üretmez.
+
+
+### Manual Binance Spot historical collection
+
+`python -m app.workers.history_backfill --days 30 --end 2026-10-05T01:00:00Z`
+prints a plan without network requests or database writes. Add `--execute` to collect
+into the existing PostgreSQL `binance_spot_candles` table. No migration is required.
+The fixed default cohort is the 20 symbols from the initial non-stablecoin study;
+`--symbols BTCUSDT,ETHUSDT` can override it (maximum 20). All symbols must be active
+in the stored catalogue and outside the explicit stablecoin candidate list.
+
+The cutoff is exclusive and must be a closed 15m boundary. Collection includes
+200 warmup bars preceding the requested period: 30 days means 3,080 bars per symbol.
+Pages are validated before atomic upsert, and each successful page is committed.
+Repeated runs with the same cutoff are idempotent; incomplete history remains
+reported as incomplete, including newly listed symbols and missing candles.
+Worker health timestamps and observed formation events are not updated by backfill.
+The usual live worker continues to refresh the latest bars.
+
+This supplies historical data only. The current API backtest still caps its latest
+history window at 1,000 bars; a dated evaluation runner is required to evaluate
+the full collected period. A retrospective time split is not an unseen holdout
+when those dates have already informed development.
