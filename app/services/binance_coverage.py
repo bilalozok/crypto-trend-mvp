@@ -6,7 +6,7 @@ from app.db.models.binance_spot import BinanceSpotCandle, BinanceSpotSymbol
 from app.services.binance_collection import BAR_MS
 
 # An explicit starting list, not an automatic classification of every asset.
-STABLECOIN_BASES = {"USDC", "FDUSD", "TUSD", "USDP", "DAI", "USDE", "USDD", "PYUSD", "USDS"}
+STABLECOIN_BASES = {"USDC", "FDUSD", "TUSD", "USDP", "DAI", "USDE", "USDD", "PYUSD", "USDS", "USD1"}
 
 
 def coverage(db, limit, offset, required, stamp):
