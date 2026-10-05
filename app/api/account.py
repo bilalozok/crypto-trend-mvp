@@ -12,7 +12,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.db.models.account import AccountSession, Purchase
 from app.db.models.binance_spot import BinanceSpotSymbol
 from app.db.session import SessionLocal
-from app.services import account_auth
+from app.services import account_auth, purchase_analysis
 from app.services.binance_collection import now_ms
 from app.services.formations import timestamp
 
@@ -266,6 +266,76 @@ def purchase_summary(
             for (symbol, currency), g in sorted(groups.items())
         ]
     return dict(groups=result, note="Komisyon dahil alış maliyeti; satış ve güncel değer içermez.")
+
+
+@router.get("/purchases/valuation")
+def purchase_valuation(
+    request: Request, db: Db, start: datetime | None = None, end: datetime | None = None
+):
+    account = current(db, request)
+    begin, finish = date_ms(start), date_ms(end)
+    if begin is not None and finish is not None and begin >= finish:
+        raise HTTPException(status_code=422, detail="Başlangıç bitişten önce olmalı.")
+    query = select(Purchase).where(Purchase.account_id == account.id)
+    if begin is not None:
+        query = query.where(Purchase.purchased_ms >= begin)
+    if finish is not None:
+        query = query.where(Purchase.purchased_ms < finish)
+    rows = db.scalars(query.limit(10_001)).all()
+    if len(rows) > 10_000:
+        raise HTTPException(
+            status_code=422, detail="10.000 kayıt sınırı aşıldı; tarih aralığını daralt."
+        )
+    return purchase_analysis.valuation(db, rows, now_ms())
+
+
+@router.get("/purchases/price-range")
+def purchase_price_range(
+    request: Request,
+    db: Db,
+    symbol: str = Query(pattern=r"^[A-Za-z0-9]{1,64}$"),
+    start: datetime | None = None,
+    end: datetime | None = None,
+):
+    account = current(db, request)
+    symbol = symbol.upper()
+    if (
+        db.scalar(
+            select(Purchase.id)
+            .where(Purchase.account_id == account.id, Purchase.symbol == symbol)
+            .limit(1)
+        )
+        is None
+    ):
+        raise HTTPException(status_code=404, detail="Bu coin için özel alış kaydı bulunamadı.")
+    stamp = now_ms()
+    finish = date_ms(end) if end is not None else stamp
+    begin = date_ms(start) if start is not None else finish - 2 * 86_400_000
+    if begin < 0 or begin >= finish or finish - begin > 31 * 86_400_000:
+        raise HTTPException(
+            status_code=422,
+            detail="Başlangıç bitişten önce olmalı; aralık en fazla 31 gün olabilir.",
+        )
+    if finish > stamp:
+        raise HTTPException(status_code=422, detail="Bitiş zamanı gelecekte olamaz.")
+    result = purchase_analysis.price_range(db, symbol, begin, finish, stamp)
+    markers = db.scalars(
+        select(Purchase)
+        .where(
+            Purchase.account_id == account.id,
+            Purchase.symbol == symbol,
+            Purchase.purchased_ms >= begin,
+            Purchase.purchased_ms < finish,
+        )
+        .order_by(Purchase.purchased_ms, Purchase.id)
+        .limit(1001)
+    ).all()
+    if len(markers) > 1000:
+        raise HTTPException(
+            status_code=422, detail="1.000 alış işareti sınırı aşıldı; aralığı daralt."
+        )
+    result["purchases"] = [purchase_out(row) for row in markers]
+    return result
 
 
 @router.delete("/purchases/{purchase_id}")

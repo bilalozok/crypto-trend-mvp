@@ -847,3 +847,42 @@ USDT, fetch currency rates or claim current valuations or P/L. Market valuation
 and range charts follow in the next step, using explicitly timestamped price/FX
 sources. Explanatory notes now distinguish supportive evidence, weaker evidence
 and observation steps; scores and signal rules are unchanged.
+
+### Özel alışların değerlemesi ve fiyat aralığı
+
+`Aldıklarım` sekmesinde **Değeri hesapla / Yenile**, üstteki tarih filtresine uyan
+alışları son kapanmış 15m Binance Spot USDT fiyatıyla değerlendirir. Bu tarih
+filtresi alış kayıtlarını seçer; geçmiş değerleme tarihi seçmez. Alış komisyonu
+maliyete dahil, satış masrafları hariçtir. Satışlar düşülmediğinden kayıtlı alış
+adetlerinin elde tutulduğu varsayılır; gerçek bakiye/portföy getirisi değildir.
+
+TL için aynı kapanışa ait Binance TR USDT/TRY kline fiyatı kullanılır.
+Kaynak: https://www.binance.tr/apidocs/ (Kline/Candlestick data); symbol type 1
+için `api.binance.me/api/v1/klines`, type 3 için
+`cloudme-tr.2meta.app/api/v1/klines`. Başlangıç ve kapanış zamanı birebir
+doğrulanır. Başarısız sorgu, eksik güncel coin fiyatı, pasif parite veya son
+fiyat zamanından sonraki alış için değer null kalır. Herhangi bir grup
+hesaplanamıyorsa o para biriminin toplam piyasa değeri ve farkı da null kalır.
+TL ve USDT maliyetleri/toplamları karıştırılmaz; USDT banka USD/TL kuru değildir.
+İki piyasadan türetilen TL değeri işlem yapılabilir teklif değildir. Dış servise
+yalnızca USDT/TRY paritesi ve ortak kapanış zamanı gönderilir.
+
+`GET /account/purchases/valuation?start=...&end=...` mevcut özel hesap oturumunu
+ister; en fazla 10.000 kayıt seçer. Fiyat/kur zamanı ve kaynak yanıtta gösterilir.
+Tutarlar Decimal ile hesaplanır ve JSON'da string kalır; yüzdeler 8 ondalığa
+yuvarlanır. TL kur sorguları 30 saniyelik kısa, süreç içi ve sınırlı önbellek
+kullanır; hata halinde sonraki aralıkta yeniden denenir.
+
+**Aralığı analiz et** ayrı başlangıç/bitiş ile (en fazla 31 gün) saklanan USDT
+fiyatlarını ve o hesaba ait alış zamanlarını gösterir.
+`GET /account/purchases/price-range?symbol=BTCUSDT&start=...&end=...` yalnızca
+hesabın alış kaydı olan coinlerde çalışır. Aralık tam kapalı 15m mumlara
+daraltılır. Eksik/geçersiz mum veya iki mumdan kısa aralıkta dönem değişimi ve
+kesintisiz grafik gösterilmez. Otomatik geçmiş indirme yapılmaz; saklanan
+geçmişin dışında aralık veri eksik olarak görünür. Grafik USDT cinsindedir; TL
+alış fiyatı grafiğe fiyat seviyesi olarak taşınmaz. İşaretler yalnızca alış
+zamanıdır. Kişisel tutarlar/notlar giriş gerektirir ve yanıtlar no-store kalır.
+
+Sayı girişleri `1234,56`, `1234.56` veya Türkçe `1.234,56` kabul eder. Para
+simgeleri ve belirsiz karma biçimler reddedilir; doğrulama hataları alan adıyla
+gösterilir. Yeni migration, hesap veya worker ayarı gerekmez.
