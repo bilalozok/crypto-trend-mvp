@@ -40,86 +40,48 @@ def valid_candle(row):
 
 @lru_cache(maxsize=8)
 def try_rate(close_ms, retry_bucket):
-    # Only public USDT/TRY and its time are sent; never account/purchase information.
-    # Binance TR documents separate routes for symbol types 1 and 3.
-    sources = (
-        ("https://api.binance.me/api/v1/klines", "USDTTRY"),
-        ("https://cloudme-tr.2meta.app/api/v1/klines", "USDT_TRY"),
-    )
-    for url, symbol in sources:
-        try:
-            response = requests.get(
-                url,
-                params=dict(
-                    symbol=symbol,
-                    interval="15m",
-                    startTime=close_ms - BAR,
-                    endTime=close_ms - 1,
-                    limit=1,
-                ),
-                timeout=(3, 4),
-                allow_redirects=False,
-            )
-            if response.status_code != 200:
-                logger.warning(
-                    "try_rate_unavailable source=%s reason=http_%s close_ms=%s",
-                    url,
-                    response.status_code,
-                    close_ms,
-                )
-                continue
+    # Public independent FX market: no personal data or Binance proxy is used.
+    url = "https://graph-api.btcturk.com/v1/klines/history"
+    reason = "unknown"
+    try:
+        response = requests.get(
+            url,
+            params={
+                "symbol": "USDTTRY",
+                "resolution": 15,
+                "from": (close_ms - BAR) // 1000,
+                "to": close_ms // 1000 - 1,
+            },
+            timeout=(3, 4),
+            allow_redirects=False,
+        )
+        if response.status_code != 200:
+            reason = "http_" + str(response.status_code)
+        else:
             payload = response.json()
-            if isinstance(payload, dict):
-                if payload.get("code") != 0:
-                    logger.warning(
-                        "try_rate_unavailable source=%s reason=api_error close_ms=%s", url, close_ms
-                    )
-                    continue
-                rows = payload.get("data")
+            if not isinstance(payload, dict) or payload.get("s") != "ok":
+                reason = "no_data"
             else:
-                rows = payload
-            if not isinstance(rows, list) or len(rows) != 1:
-                logger.warning(
-                    "try_rate_unavailable source=%s reason=missing_candle close_ms=%s",
-                    url,
-                    close_ms,
-                )
-                continue
-            row = rows[0]
-            if not isinstance(row, list) or len(row) < 7:
-                logger.warning(
-                    "try_rate_unavailable source=%s reason=invalid_shape close_ms=%s", url, close_ms
-                )
-                continue
-            if int(row[0]) != close_ms - BAR or int(row[6]) != close_ms - 1:
-                logger.warning(
-                    "try_rate_unavailable source=%s reason=wrong_candle_time close_ms=%s",
-                    url,
-                    close_ms,
-                )
-                continue
-            rate = number(row[4])
-            opened, high, low = (number(row[i]) for i in (1, 2, 3))
-            if (
-                all(value is not None for value in (rate, opened, high, low))
-                and low <= min(opened, rate) <= max(opened, rate) <= high
-            ):
-                return dict(
-                    price=format(rate, "f"),
-                    candle_close_time=timestamp(close_ms),
-                    source="Binance TR USDT/TRY · kapanmış 15m mum",
-                )
-            logger.warning(
-                "try_rate_unavailable source=%s reason=invalid_price close_ms=%s", url, close_ms
-            )
-        except (requests.RequestException, ValueError, TypeError, IndexError, OverflowError) as exc:
-            logger.warning(
-                "try_rate_unavailable source=%s reason=%s close_ms=%s",
-                url,
-                type(exc).__name__,
-                close_ms,
-            )
-            continue
+                columns = [payload.get(key) for key in ("t", "o", "h", "l", "c")]
+                if not all(isinstance(column, list) and len(column) == 1 for column in columns):
+                    reason = "invalid_shape"
+                elif columns[0][0] != (close_ms - BAR) // 1000:
+                    reason = "wrong_candle_time"
+                else:
+                    opened, high, low, rate = (number(column[0]) for column in columns[1:])
+                    if (
+                        all(value is not None for value in (rate, opened, high, low))
+                        and low <= min(opened, rate) <= max(opened, rate) <= high
+                    ):
+                        return dict(
+                            price=format(rate, "f"),
+                            candle_close_time=timestamp(close_ms),
+                            source="BtcTurk USDT/TRY · kapanmış 15m mum",
+                        )
+                    reason = "invalid_price"
+    except (requests.RequestException, ValueError, TypeError, IndexError, OverflowError) as exc:
+        reason = type(exc).__name__
+    logger.warning("try_rate_unavailable source=%s reason=%s close_ms=%s", url, reason, close_ms)
     return None
 
 

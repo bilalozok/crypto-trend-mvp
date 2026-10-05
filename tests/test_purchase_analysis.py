@@ -133,46 +133,75 @@ def response(data):
     return SimpleNamespace(status_code=200, raise_for_status=lambda: None, json=lambda: data)
 
 
-def test_fx_exact_time_positive_decimal_and_documented_fallback(monkeypatch):
+def fx_payload(price="49.17", opened=None):
+    return dict(
+        s="ok",
+        t=[(STAMP - analysis.BAR) // 1000 if opened is None else opened],
+        o=["49"],
+        h=["50"],
+        l=["48"],
+        c=[price],
+    )
+
+
+def test_fx_exact_time_positive_decimal_and_public_request(monkeypatch):
     analysis.try_rate.cache_clear()
     calls = []
 
     def get(url, **kwargs):
         calls.append((url, kwargs))
-        if len(calls) == 1:
-            return response(dict(code=-1, data=[]))
-        return response(
-            dict(code=0, data=[[STAMP - analysis.BAR, "50", "51", "49", "50.25", "1", STAMP - 1]])
-        )
+        return response(fx_payload())
 
     monkeypatch.setattr(analysis.requests, "get", get)
     rate = analysis.try_rate(STAMP, 0)
-    assert rate["price"] == "50.25"
-    assert len(calls) == 2 and calls[1][1]["params"]["symbol"] == "USDT_TRY"
-    assert calls[1][1]["params"]["endTime"] == STAMP - 1
-    assert calls[1][1]["allow_redirects"] is False
-    assert analysis.try_rate(STAMP, 0) == rate and len(calls) == 2
+    assert rate["price"] == "49.17"
+    assert "BtcTurk" in rate["source"]
+    assert len(calls) == 1
+    assert calls[0][0] == "https://graph-api.btcturk.com/v1/klines/history"
+    assert calls[0][1]["params"] == {
+        "symbol": "USDTTRY",
+        "resolution": 15,
+        "from": (STAMP - analysis.BAR) // 1000,
+        "to": STAMP // 1000 - 1,
+    }
+    assert calls[0][1]["allow_redirects"] is False
+    assert analysis.try_rate(STAMP, 0) == rate and len(calls) == 1
     analysis.try_rate.cache_clear()
 
 
 @pytest.mark.parametrize(
-    "price,closed",
-    [("NaN", STAMP - 1), ("-1", STAMP - 1), ("50", STAMP), ("50", STAMP - analysis.BAR - 1)],
+    "payload",
+    [
+        fx_payload("NaN"),
+        fx_payload("-1"),
+        fx_payload("99"),
+        fx_payload(opened=STAMP // 1000),
+        fx_payload(opened=STAMP - analysis.BAR),
+        dict(s="no_data"),
+        dict(s="ok", t=[]),
+        {**fx_payload(), "c": []},
+        {**fx_payload(), "t": [1, 2]},
+    ],
 )
-def test_fx_rejects_invalid_price_or_misaligned_time(monkeypatch, price, closed):
+def test_fx_rejects_invalid_or_misaligned_data(monkeypatch, payload):
     analysis.try_rate.cache_clear()
-    monkeypatch.setattr(
-        analysis.requests,
-        "get",
-        lambda *a, **k: response(
-            dict(code=0, data=[[STAMP - analysis.BAR, 1, 1, 1, price, 1, closed]])
-        ),
-    )
+    monkeypatch.setattr(analysis.requests, "get", lambda *a, **k: response(payload))
     assert analysis.try_rate(STAMP, 0) is None
     analysis.try_rate.cache_clear()
 
 
-def test_fx_timeout_returns_unavailable(monkeypatch):
+@pytest.mark.parametrize("status", [400, 451, 429, 500])
+def test_fx_http_failure_is_unavailable(monkeypatch, status, caplog):
+    analysis.try_rate.cache_clear()
+    monkeypatch.setattr(
+        analysis.requests, "get", lambda *a, **k: SimpleNamespace(status_code=status)
+    )
+    assert analysis.try_rate(STAMP, 0) is None
+    assert "reason=http_" + str(status) in caplog.text
+    analysis.try_rate.cache_clear()
+
+
+def test_fx_timeout_returns_unavailable(monkeypatch, caplog):
     analysis.try_rate.cache_clear()
 
     def fail(*args, **kwargs):
@@ -180,6 +209,7 @@ def test_fx_timeout_returns_unavailable(monkeypatch):
 
     monkeypatch.setattr(analysis.requests, "get", fail)
     assert analysis.try_rate(STAMP, 0) is None
+    assert "reason=Timeout" in caplog.text
     analysis.try_rate.cache_clear()
 
 
@@ -203,18 +233,3 @@ def test_tiny_amounts_preserve_value_and_chart_decimal_strings(private_client, m
         result = analysis.price_range(db, "BTCUSDT", STAMP - 2 * analysis.BAR, STAMP, STAMP)
     assert result["last_close"] == "0.0000001"
     assert result["points"][0]["price"] == "0.0000001"
-
-
-def test_fx_accepts_live_bare_list_response(monkeypatch):
-    analysis.try_rate.cache_clear()
-    calls = []
-
-    def get(url, **kwargs):
-        calls.append(url)
-        return response([[STAMP - analysis.BAR, "49", "50", "48", "49.17", "1", STAMP - 1]])
-
-    monkeypatch.setattr(analysis.requests, "get", get)
-    result = analysis.try_rate(STAMP, 0)
-    assert result["price"] == "49.17"
-    assert len(calls) == 1
-    analysis.try_rate.cache_clear()

@@ -856,16 +856,19 @@ filtresi alış kayıtlarını seçer; geçmiş değerleme tarihi seçmez. Alı�
 maliyete dahil, satış masrafları hariçtir. Satışlar düşülmediğinden kayıtlı alış
 adetlerinin elde tutulduğu varsayılır; gerçek bakiye/portföy getirisi değildir.
 
-TL için aynı kapanışa ait Binance TR USDT/TRY kline fiyatı kullanılır.
-Kaynak: https://www.binance.tr/apidocs/ (Kline/Candlestick data); symbol type 1
-için `api.binance.me/api/v1/klines`, type 3 için
-`cloudme-tr.2meta.app/api/v1/klines`. Başlangıç ve kapanış zamanı birebir
-doğrulanır. Başarısız sorgu, eksik güncel coin fiyatı, pasif parite veya son
+TL için aynı kapanışa ait **BtcTurk USDT/TRY** kline fiyatı kullanılır.
+Kaynak: https://docs.btcturk.com/docs/public-endpoints/get-kline-data/;
+`graph-api.btcturk.com/v1/klines/history`, `symbol=USDTTRY`, `resolution=15`.
+`from`/`to` saniyedir; dönen `t` açılış zamanı istenen 15m mumla birebir
+örtüşmelidir. OHLC pozitif/sonlu/tutarlı olmalı; tüm diziler tek mum içermelidir.
+Coin fiyatı Binance Spot, kur ayrı BtcTurk piyasasıdır; kaynak ekranda gösterilir.
+Binance TR bağlantısı Railway'de HTTP 451 döndüğü için bağımsız veri sağlayıcısı
+kullanılır. Başarısız sorgu, eksik güncel coin fiyatı, pasif parite veya son
 fiyat zamanından sonraki alış için değer null kalır. Herhangi bir grup
 hesaplanamıyorsa o para biriminin toplam piyasa değeri ve farkı da null kalır.
 TL ve USDT maliyetleri/toplamları karıştırılmaz; USDT banka USD/TL kuru değildir.
 İki piyasadan türetilen TL değeri işlem yapılabilir teklif değildir. Dış servise
-yalnızca USDT/TRY paritesi ve ortak kapanış zamanı gönderilir.
+yalnızca USDT/TRY paritesi ve ortak mum zaman aralığı gönderilir.
 
 `GET /account/purchases/valuation?start=...&end=...` mevcut özel hesap oturumunu
 ister; en fazla 10.000 kayıt seçer. Fiyat/kur zamanı ve kaynak yanıtta gösterilir.
