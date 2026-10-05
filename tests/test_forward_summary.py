@@ -83,3 +83,43 @@ def test_api_and_dashboard(client, monkeypatch):
     html = client.get("/analysis/binance/dashboard").text
     assert 'id="forward-load"' in html
     assert "forward/summary?days=7" in html
+
+
+def test_pattern_groups_reconcile_with_totals_and_preserve_missing_results():
+    with SessionLocal() as db:
+        add(db, "a" * 64, outcomes={"4": dict(status="complete", result=dict(net_return_pct=2))})
+        add(
+            db,
+            "a" * 64,
+            observed=191 * BAR,
+            outcomes={"4": dict(status="complete", result=dict(net_return_pct=-1))},
+        )
+        add(
+            db,
+            "a" * 64,
+            observed=192 * BAR,
+            outcomes={"4": dict(status="invalid_data", result=None)},
+        )
+        row = db.get(ForwardSignal, ("BTCUSDT", "a" * 64, 192 * BAR))
+        row.snapshot = dict(primary_pattern=dict(name="Alçalan takoz"), evidence_score=90)
+        db.commit()
+        result = summarize(db, 200 * BAR, fingerprint="a" * 64)
+        groups = {g["pattern_name"]: g for g in result["pattern_groups"]}
+        first = groups["Çift dip"]["horizons"][0]
+        assert first["completed"] == 2
+        assert first["mean_net_return_pct"] == 0.5
+        assert first["median_net_return_pct"] == 0.5
+        assert first["positive_net_rate_pct"] == 50
+        assert groups["Çift dip"]["unique_symbols"] == 1
+        other = groups["Alçalan takoz"]["horizons"][0]
+        assert other["invalid"] == 1 and other["mean_net_return_pct"] is None
+        for index, total in enumerate(result["horizons"]):
+            for key in ("completed", "pending", "invalid"):
+                assert sum(g["horizons"][index][key] for g in groups.values()) == total[key]
+        assert sum(g["total_signals"] for g in groups.values()) == result["total_signals"]
+
+
+def test_empty_pattern_groups(client):
+    with SessionLocal() as db:
+        assert summarize(db, 200 * BAR, fingerprint="a" * 64)["pattern_groups"] == []
+    assert 'id="forward-patterns"' in client.get("/analysis/binance/dashboard").text

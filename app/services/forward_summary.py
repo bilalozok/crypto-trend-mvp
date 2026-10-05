@@ -10,25 +10,7 @@ from app.services.formations import timestamp
 from app.services.forward_tracking import rules_hash
 
 
-def summarize(db, stamp, days=7, fingerprint=None):
-    fingerprint = fingerprint or rules_hash()
-    cutoff = stamp - days * 86_400_000
-    rows = db.execute(
-        select(
-            ForwardSignal.symbol,
-            ForwardSignal.observed_ms,
-            ForwardSignal.entry_ms,
-            ForwardSignal.outcomes,
-            ForwardSignal.snapshot["primary_pattern"]["name"].as_string().label("pattern_name"),
-            ForwardSignal.snapshot["evidence_score"].as_float().label("score"),
-        )
-        .where(
-            ForwardSignal.rule_hash == fingerprint,
-            ForwardSignal.observed_ms >= cutoff,
-            ForwardSignal.observed_ms <= stamp,
-        )
-        .order_by(ForwardSignal.observed_ms.desc(), ForwardSignal.symbol)
-    ).all()
+def horizon_summary(rows):
     horizons = []
     for bars in (4, 8, 16):
         completed, pending, invalid = [], 0, 0
@@ -61,6 +43,41 @@ def summarize(db, stamp, days=7, fingerprint=None):
                 median_net_return_pct=median(completed) if completed else None,
             )
         )
+    return horizons
+
+
+def summarize(db, stamp, days=7, fingerprint=None):
+    fingerprint = fingerprint or rules_hash()
+    cutoff = stamp - days * 86_400_000
+    rows = db.execute(
+        select(
+            ForwardSignal.symbol,
+            ForwardSignal.observed_ms,
+            ForwardSignal.entry_ms,
+            ForwardSignal.outcomes,
+            ForwardSignal.snapshot["primary_pattern"]["name"].as_string().label("pattern_name"),
+            ForwardSignal.snapshot["evidence_score"].as_float().label("score"),
+        )
+        .where(
+            ForwardSignal.rule_hash == fingerprint,
+            ForwardSignal.observed_ms >= cutoff,
+            ForwardSignal.observed_ms <= stamp,
+        )
+        .order_by(ForwardSignal.observed_ms.desc(), ForwardSignal.symbol)
+    ).all()
+    horizons = horizon_summary(rows)
+    grouped = {}
+    for row in rows:
+        grouped.setdefault(row.pattern_name or "Unknown", []).append(row)
+    pattern_groups = [
+        dict(
+            pattern_name=name,
+            total_signals=len(group),
+            unique_symbols=len({row.symbol for row in group}),
+            horizons=horizon_summary(group),
+        )
+        for name, group in sorted(grouped.items())
+    ]
     recent = []
     for row in rows[:10]:
         values = {}
@@ -99,6 +116,7 @@ def summarize(db, stamp, days=7, fingerprint=None):
         unique_symbols=len({row.symbol for row in rows}),
         horizons=horizons,
         recent_signals=recent,
+        pattern_groups=pattern_groups,
         note=(
             "Same-rule hypothetical signal outcomes; "
             "pending and invalid results excluded from return statistics."

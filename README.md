@@ -756,3 +756,13 @@ Only finite, completed net returns enter statistics; empty means/rates are null.
 The dashboard has a manual refresh panel for all coins, independent of the
 selected chart coin. Periods may have different completed cohorts, so compare
 sample counts before comparing horizons. No migration or worker changes required.
+
+### Forward results by formation
+
+The forward summary includes `pattern_groups`, grouped by the primary formation
+name saved at observation. Each group reports signal and unique-symbol counts,
+plus completed, pending, invalid, positive-net rate, mean and median net returns
+for 1/2/4 hours. The dashboard displays these counts without ranking formations.
+Groups share the selected rule fingerprint and observation window. Different
+horizons can have different completed cohorts; small samples do not establish
+future success probabilities. Signal capture rules and migrations are unchanged.
