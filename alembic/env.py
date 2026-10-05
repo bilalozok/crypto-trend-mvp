@@ -22,6 +22,7 @@ if database_url:
         database_url = database_url.replace("postgres://", "postgresql://", 1)
     config.set_main_option("sqlalchemy.url", database_url)
 
+import app.db.models.account  # noqa: F401,E402
 import app.db.models.binance_spot  # noqa: F401,E402
 import app.db.models.candle  # noqa: F401,E402
 import app.db.models.feature  # noqa: F401,E402

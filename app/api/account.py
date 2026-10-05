@@ -1,0 +1,281 @@
+import os
+from datetime import datetime
+from decimal import Decimal, localcontext
+from typing import Annotated, Literal
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+from sqlalchemy import delete, select
+from sqlalchemy.exc import SQLAlchemyError
+
+from app.db.models.account import AccountSession, Purchase
+from app.db.models.binance_spot import BinanceSpotSymbol
+from app.db.session import SessionLocal
+from app.services import account_auth
+from app.services.binance_collection import now_ms
+from app.services.formations import timestamp
+
+router = APIRouter(prefix="/account", tags=["Private purchases"])
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise HTTPException(status_code=503, detail="Hesap veritabanına erişilemiyor.") from exc
+    finally:
+        db.close()
+
+
+Db = Annotated[object, Depends(get_db)]
+
+
+class LoginInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    username: str = Field(min_length=1, max_length=32, pattern=r"^[a-zA-Z0-9_.-]+$")
+    password: str = Field(min_length=1, max_length=128)
+
+
+class PurchaseInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    id: UUID
+    symbol: str = Field(min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9]+$")
+    purchased_at: datetime
+    currency: Literal["TRY", "USDT"]
+    unit_price: Decimal = Field(gt=0, le=Decimal("1e12"), max_digits=38, decimal_places=18)
+    quantity: Decimal = Field(gt=0, le=Decimal("1e12"), max_digits=38, decimal_places=18)
+    fee: Decimal = Field(
+        default=Decimal(0), ge=0, le=Decimal("1e12"), max_digits=38, decimal_places=18
+    )
+    note: str = Field(default="", max_length=1000)
+
+    @field_validator("purchased_at")
+    @classmethod
+    def aware(cls, value):
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("Saat dilimi içeren tarih gerekli.")
+        return value
+
+
+def same_origin(request):
+    # JSON login plus strict cookies; reject explicit foreign origins for all mutations.
+    origin = request.headers.get("origin")
+    expected = os.getenv(
+        "PRIVATE_APP_ORIGIN", "https://crypto-trend-mvp-production.up.railway.app"
+    ).rstrip("/")
+    if origin and origin != expected:
+        raise HTTPException(status_code=403, detail="Bu kaynaktan işlem yapılamaz.")
+
+
+def current(db, request, mutate=False):
+    token = request.cookies.get(account_auth.COOKIE)
+    account = account_auth.require_account(db, token, now_ms())
+    if mutate:
+        same_origin(request)
+        account_auth.require_csrf(token, request.headers.get("x-csrf-token"))
+    return account
+
+
+@router.post("/login")
+def login(data: LoginInput, request: Request, response: Response, db: Db):
+    same_origin(request)
+    old_token = request.cookies.get(account_auth.COOKIE)
+    token = account_auth.login(db, data.username.lower(), data.password, now_ms())
+    if old_token:
+        db.execute(
+            delete(AccountSession).where(
+                AccountSession.token_hash == account_auth.digest(old_token)
+            )
+        )
+        db.commit()
+    response.set_cookie(
+        account_auth.COOKIE,
+        token,
+        max_age=account_auth.SESSION_MS // 1000,
+        secure=True,
+        httponly=True,
+        samesite="strict",
+        path="/",
+    )
+    return dict(authenticated=True)
+
+
+@router.get("/session")
+def session(request: Request, db: Db):
+    account = current(db, request)
+    return dict(
+        username=account.username,
+        csrf_token=account_auth.csrf_token(request.cookies[account_auth.COOKIE]),
+    )
+
+
+@router.post("/logout")
+def logout(request: Request, response: Response, db: Db):
+    current(db, request, mutate=True)
+    db.execute(
+        delete(AccountSession).where(
+            AccountSession.token_hash == account_auth.digest(request.cookies[account_auth.COOKIE])
+        )
+    )
+    db.commit()
+    response.delete_cookie(
+        account_auth.COOKIE, secure=True, httponly=True, samesite="strict", path="/"
+    )
+    return dict(authenticated=False)
+
+
+def purchase_out(row):
+    with localcontext() as ctx:
+        ctx.prec = 80
+        cost = Decimal(row.unit_price) * Decimal(row.quantity) + Decimal(row.fee)
+    return dict(
+        id=row.id,
+        symbol=row.symbol,
+        purchased_at=timestamp(row.purchased_ms),
+        currency=row.currency,
+        unit_price=row.unit_price,
+        quantity=row.quantity,
+        fee=row.fee,
+        total_cost=format(cost, "f"),
+        note=row.note,
+    )
+
+
+@router.post("/purchases", status_code=201)
+def add_purchase(data: PurchaseInput, request: Request, db: Db):
+    account = current(db, request, mutate=True)
+    stamp = now_ms()
+    purchased_ms = round(data.purchased_at.timestamp() * 1000)
+    if purchased_ms > stamp or purchased_ms < 0:
+        raise HTTPException(
+            status_code=422, detail="Alış zamanı gelecekte veya 1970 öncesinde olamaz."
+        )
+    symbol = data.symbol.upper()
+    known = db.get(BinanceSpotSymbol, symbol)
+    if known is None:
+        raise HTTPException(
+            status_code=422, detail="Katalogda bulunan Binance USDT paritesini seç."
+        )
+    values = dict(
+        symbol=symbol,
+        purchased_ms=purchased_ms,
+        currency=data.currency,
+        unit_price=format(data.unit_price, "f"),
+        quantity=format(data.quantity, "f"),
+        fee=format(data.fee, "f"),
+        note=data.note,
+    )
+    existing = db.get(Purchase, str(data.id))
+    if existing:
+        if existing.account_id != account.id:
+            raise HTTPException(
+                status_code=409, detail="Kayıt kimliği kullanılamıyor; yeniden dene."
+            )
+        if any(getattr(existing, key) != value for key, value in values.items()):
+            raise HTTPException(
+                status_code=409, detail="Bu kayıt kimliği farklı bilgilerle kullanılmış."
+            )
+        return purchase_out(existing)
+    row = Purchase(id=str(data.id), account_id=account.id, created_ms=stamp, **values)
+    db.add(row)
+    result = purchase_out(row)
+    db.commit()
+    return result
+
+
+def date_ms(value):
+    if value is None:
+        return None
+    if value.tzinfo is None or value.utcoffset() is None:
+        raise HTTPException(status_code=422, detail="Saat dilimi içeren tarih gerekli.")
+    return round(value.timestamp() * 1000)
+
+
+@router.get("/purchases")
+def purchases(
+    request: Request,
+    db: Db,
+    start: datetime | None = None,
+    end: datetime | None = None,
+    limit: int = Query(100, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+):
+    account = current(db, request)
+    begin, finish = date_ms(start), date_ms(end)
+    if begin is not None and finish is not None and begin >= finish:
+        raise HTTPException(status_code=422, detail="Başlangıç bitişten önce olmalı.")
+    conditions = [Purchase.account_id == account.id]
+    if begin is not None:
+        conditions.append(Purchase.purchased_ms >= begin)
+    if finish is not None:
+        conditions.append(Purchase.purchased_ms < finish)
+    rows = db.scalars(
+        select(Purchase)
+        .where(*conditions)
+        .order_by(Purchase.purchased_ms.desc(), Purchase.id)
+        .offset(offset)
+        .limit(limit + 1)
+    ).all()
+    shown = rows[:limit]
+    return dict(
+        purchases=[purchase_out(row) for row in shown],
+        next_offset=offset + len(shown) if len(rows) > limit else None,
+    )
+
+
+@router.get("/purchases/summary")
+def purchase_summary(
+    request: Request, db: Db, start: datetime | None = None, end: datetime | None = None
+):
+    # Bounded selection for exact decimal arithmetic, never mixes currencies.
+    account = current(db, request)
+    begin, finish = date_ms(start), date_ms(end)
+    if begin is not None and finish is not None and begin >= finish:
+        raise HTTPException(status_code=422, detail="Başlangıç bitişten önce olmalı.")
+    query = select(Purchase).where(Purchase.account_id == account.id)
+    if begin is not None:
+        query = query.where(Purchase.purchased_ms >= begin)
+    if finish is not None:
+        query = query.where(Purchase.purchased_ms < finish)
+    rows = db.scalars(query.limit(10_001)).all()
+    if len(rows) > 10_000:
+        raise HTTPException(
+            status_code=422, detail="10.000 kayıt sınırı aşıldı; tarih aralığını daralt."
+        )
+    groups = {}
+    with localcontext() as ctx:
+        ctx.prec = 80
+        for row in rows:
+            key = (row.symbol, row.currency)
+            group = groups.setdefault(key, dict(quantity=Decimal(0), cost=Decimal(0), count=0))
+            group["quantity"] += Decimal(row.quantity)
+            group["cost"] += Decimal(row.unit_price) * Decimal(row.quantity) + Decimal(row.fee)
+            group["count"] += 1
+        result = [
+            dict(
+                symbol=symbol,
+                currency=currency,
+                purchases=g["count"],
+                quantity=format(g["quantity"], "f"),
+                total_cost=format(g["cost"], "f"),
+                average_cost=format((g["cost"] / g["quantity"]).quantize(Decimal("1e-18")), "f"),
+            )
+            for (symbol, currency), g in sorted(groups.items())
+        ]
+    return dict(groups=result, note="Komisyon dahil alış maliyeti; satış ve güncel değer içermez.")
+
+
+@router.delete("/purchases/{purchase_id}")
+def remove_purchase(purchase_id: UUID, request: Request, db: Db):
+    account = current(db, request, mutate=True)
+    row = db.scalar(
+        select(Purchase).where(Purchase.id == str(purchase_id), Purchase.account_id == account.id)
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="Alış kaydı bulunamadı.")
+    db.delete(row)
+    db.commit()
+    return dict(deleted=True)

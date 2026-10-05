@@ -810,3 +810,40 @@ missing measurements, historical snapshots and what to inspect next. These notes
 are descriptions, not personal saved notes or order instructions. They do not
 change stored reports, signal capture rules, scores, or migrations. Personal
 TL/USDT purchases and protected account access are a subsequent implementation.
+
+### Private purchase ledger (TL / USDT)
+
+Apply migration `bf15c2026e01` before deployment. It adds account/session/login-limit
+and purchase tables, preserving all candles, signals and reports. Accounts are
+provisioned only through `python -m app.workers.account_admin --username <name>`.
+The CLI reads a 15–128 character password twice via hidden prompts, never arguments
+or printed output. `--reset-password` replaces the password and revokes sessions.
+Use the intended production PostgreSQL connection when provisioning accounts.
+There is no public signup or password-reset endpoint.
+
+Passwords use salted scrypt N=2^17, r=8, p=1; raw sessions are random, hashed in
+storage, expire after 12 hours and use Secure/HttpOnly/SameSite=Strict host cookies.
+Private writes require a session and CSRF header, and explicit foreign origins
+are rejected. `PRIVATE_APP_ORIGIN` defaults to the existing Railway HTTPS origin;
+set it to the exact HTTPS origin when using another domain. Database-backed login
+budgets allow 6 attempts per username and 30 globally per 15 minutes, including
+successful logins. One password verification per web process runs at a time.
+Private responses have no-store cache headers. Existing public analysis/report
+routes remain public; they never include personal purchase records.
+References: OWASP Password Storage, Session Management and CSRF Prevention cheat
+sheets at https://cheatsheetseries.owasp.org/ .
+
+The Aldıklarım tab supports owner-scoped purchase creation/listing/deletion,
+start-inclusive/end-exclusive Turkey-time date filters and pagination. All amounts
+are validated finite decimal strings (up to 18 decimal places), preserved without
+binary float conversion. Cost equals price times coin quantity plus fee in the
+selected currency. Exact totals are kept; average unit cost is rounded to 18
+places. Currency groups are separate, and selected-period purchases are not
+presented as the entire portfolio. A repeated purchase UUID with identical fields
+is idempotent. Personal notes are rendered as text and scoped to the account.
+
+This release is an acquisition ledger: it does not subtract sales, convert TL to
+USDT, fetch currency rates or claim current valuations or P/L. Market valuation
+and range charts follow in the next step, using explicitly timestamped price/FX
+sources. Explanatory notes now distinguish supportive evidence, weaker evidence
+and observation steps; scores and signal rules are unchanged.

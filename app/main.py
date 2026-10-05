@@ -6,6 +6,7 @@ from fastapi import Depends, FastAPI, HTTPException, Query
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+import app.db.models.account  # noqa: F401
 import app.db.models.formation_history  # noqa: F401
 import app.db.models.forward_report  # noqa: F401
 import app.db.models.forward_signal  # noqa: F401
@@ -494,3 +495,18 @@ def download_forward_report(report_id: UUID, db: DbDep):
         media_type="application/json",
         headers={"Content-Disposition": f'attachment; filename="forward_report_{report_id}.json"'},
     )
+
+
+# Public analysis stays available; all /account data routes enforce ownership.
+from app.api.account import router as account_router  # noqa: E402
+
+app.include_router(account_router)
+
+
+@app.middleware("http")
+async def private_cache_headers(request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith("/account/"):
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["Pragma"] = "no-cache"
+    return response
