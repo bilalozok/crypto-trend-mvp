@@ -697,3 +697,24 @@ This supplies historical data only. The current API backtest still caps its late
 history window at 1,000 bars; a dated evaluation runner is required to evaluate
 the full collected period. A retrospective time split is not an unseen holdout
 when those dates have already informed development.
+
+
+### Fixed-date paired horizon study
+
+`python -m app.workers.historical_study --output signal_study_30d.json`
+reads existing PostgreSQL candles only, using the fixed 20-symbol backfill cohort.
+Defaults: start 2026-09-05T01:00:00Z, split 2026-09-25T01:00:00Z,
+end 2026-10-05T01:00:00Z. Flags `--start`, `--split`, `--end`, `--symbols`
+can override these dates and cohort. An existing output file is never overwritten.
+
+All required candles including 200 warmup bars are validated before evaluation.
+The unchanged real replay engine selects signals once per period; 4/8/16-bar
+outcomes use identical signal identities and fixed costs (10bps fee and 5bps
+slippage per side). Signals without a full 16-bar forward window within their
+period are excluded for every horizon and counted separately. No transaction
+spans a network request; no remote requests or database writes occur.
+
+The JSON contains per-period, per-horizon totals, pattern breakdowns and signal
+records. Terminal summaries are signal-weighted, not averages of coin averages.
+These are retrospective current-cohort statistics, not independent portfolio
+trades, calibrated probabilities or unseen validation results.
