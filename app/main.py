@@ -359,8 +359,13 @@ def formation_scan(
     max_confirmation_age_bars: int | None = Query(None, ge=0, le=200),
     breakout_holding: bool | None = Query(None),
     min_volume_ratio: float | None = Query(None, ge=0, le=1000, allow_inf_nan=False),
+    pattern: str | None = Query(None),
 ):
     from app.services.formation_scan import scan
+    from app.services.formations import NAMES
+
+    if pattern is not None and pattern not in NAMES:
+        raise HTTPException(status_code=422, detail="Unknown formation pattern")
 
     try:
         return scan(
@@ -375,6 +380,7 @@ def formation_scan(
             max_confirmation_age_bars,
             breakout_holding,
             min_volume_ratio,
+            pattern,
         )
     except SQLAlchemyError as exc:
         raise HTTPException(status_code=503, detail="Analysis database unavailable") from exc

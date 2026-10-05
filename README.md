@@ -793,3 +793,20 @@ GET `/analysis/binance/forward/reports/{id}` opens a saved payload; append
 Pending outcomes stay pending in old reports. Reports from different times can
 overlap and are not independent samples. Creating a report never changes signal
 rules or the worker. These routes follow the existing public API access model.
+
+### Dashboard categories and formation-first flow
+
+The analysis dashboard separates coin analysis, formation scanning, candidates,
+forward results and saved reports into keyboard-accessible tabs. Clicking a coin
+in any scan opens its coin tab and chart. The current tab stays in the URL.
+Formation scanning selects any of the 20 supported patterns, state and direction,
+with optional volume and fresh/holding/volume-supported confirmation filters.
+All eligible symbol pages are scanned; changed candle windows, changed universe
+counts or failed pages stop the run without displaying a partial matching list.
+GET `/analysis/binance/formations/scan` accepts optional `pattern=<formation_id>`;
+unknown IDs return 422. Omitting it preserves the existing multi-pattern scan.
+Existing and new tables include generated explanatory notes about evidence,
+missing measurements, historical snapshots and what to inspect next. These notes
+are descriptions, not personal saved notes or order instructions. They do not
+change stored reports, signal capture rules, scores, or migrations. Personal
+TL/USDT purchases and protected account access are a subsequent implementation.

@@ -20,6 +20,7 @@ def scan(
     max_confirmation_age_bars=None,
     breakout_holding=None,
     min_volume_ratio=None,
+    pattern=None,
 ):
     filters = [
         BinanceSpotSymbol.active.is_(True),
@@ -68,6 +69,7 @@ def scan(
             p
             for p in result["patterns"]
             if p["status"] != "not_detected"
+            and (pattern is None or p["pattern"] == pattern)
             and (state == "all" or p["status"] == state)
             and (direction == "all" or p["direction"] == direction)
             and (
@@ -100,6 +102,7 @@ def scan(
         "method_version": "price_patterns_v1",
         "experimental": True,
         "as_of": timestamp(stamp),
+        "pattern": pattern,
         "direction": direction,
         "state": state,
         "min_quote_volume": min_volume,
