@@ -47,6 +47,23 @@ def collect_market(budget=180, workers=4, limit=500):
                     "formation_history_failed symbol=%s error=%s", symbol, type(exc).__name__
                 )
                 return False, False
+            if os.getenv("FORWARD_TRACKING_ENABLED", "false").lower() == "true":
+                from app.services.forward_tracking import track_symbol
+
+                try:
+                    with SessionLocal() as db:
+                        tracked = track_symbol(db, symbol, now_ms())
+                    logger.info(
+                        "forward_tracking_complete symbol=%s recorded=%s settled=%s",
+                        symbol,
+                        tracked["recorded"],
+                        tracked["settled"],
+                    )
+                except Exception as exc:
+                    logger.error(
+                        "forward_tracking_failed symbol=%s error=%s", symbol, type(exc).__name__
+                    )
+                    return False, False
             return True, False
         except Exception as exc:
             with SessionLocal() as db:

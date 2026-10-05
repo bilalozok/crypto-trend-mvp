@@ -6,6 +6,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 import app.db.models.formation_history  # noqa: F401
+import app.db.models.forward_signal  # noqa: F401
 from app.db.base import Base
 from app.db.models.binance_spot import BinanceSpotCandle
 from app.db.models.candle import Candle
@@ -401,3 +402,20 @@ def formation_chart_page():
 
     page = Path(__file__).resolve().parent / "static" / "formation_chart.html"
     return HTMLResponse(page.read_text(encoding="utf-8"))
+
+
+@app.get("/analysis/binance/forward")
+def forward_signals(
+    db: DbDep,
+    symbol: str | None = None,
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+):
+    from app.services.forward_tracking import listing
+
+    try:
+        return listing(db, symbol.upper() if symbol else None, limit, offset)
+    except SQLAlchemyError as exc:
+        raise HTTPException(
+            status_code=503, detail="Forward tracking database unavailable"
+        ) from exc

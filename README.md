@@ -718,3 +718,29 @@ The JSON contains per-period, per-horizon totals, pattern breakdowns and signal
 records. Terminal summaries are signal-weighted, not averages of coin averages.
 These are retrospective current-cohort statistics, not independent portfolio
 trades, calibrated probabilities or unseen validation results.
+
+
+### Observed forward signal tracking
+
+Apply migration `9d15c2026c01` before enabling `FORWARD_TRACKING_ENABLED=true`
+on the existing market worker. The feature defaults to disabled.
+`GET /analysis/binance/forward?symbol=BTCUSDT&limit=20&offset=0` exposes immutable
+observed snapshots, rule hashes, observation delays, scheduled hypothetical
+entries and later 1/2/4h outcomes. No orders are sent.
+
+Only new, volume-supported, non-conflicting upward confirmations on the latest
+closed bar are recorded. Stablecoin candidates are excluded. A per-coin, per-rule
+4h cooldown prevents overlapping entries. Rule configuration and a hash of the
+engine source are saved so records from changed rules can be separated.
+
+The hypothetical entry is the first 15m boundary strictly after observation;
+it is not the opening price already elapsed when the worker recognized the
+signal. Closed stored bars later provide outcomes, using fixed per-side costs
+of 10bps fee plus 5bps slippage. Missing/invalid forward data is marked invalid
+and never treated as a return; completed outcomes and signal snapshots are not
+rewritten. Observation and measurement timestamps are separate.
+
+The worker records observations only after this feature is enabled; backfill does
+not generate historical forward signals. The current implementation settles when
+the symbol is successfully refreshed; an inactive/unavailable symbol may remain
+pending. These hypothetical per-signal statistics are not portfolio performance.
