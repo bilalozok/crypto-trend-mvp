@@ -60,9 +60,12 @@ def try_rate(close_ms, retry_bucket):
             )
             response.raise_for_status()
             payload = response.json()
-            if not isinstance(payload, dict) or payload.get("code") != 0:
-                continue
-            rows = payload.get("data")
+            if isinstance(payload, dict):
+                if payload.get("code") != 0:
+                    continue
+                rows = payload.get("data")
+            else:
+                rows = payload
             if not isinstance(rows, list) or len(rows) != 1:
                 continue
             row = rows[0]

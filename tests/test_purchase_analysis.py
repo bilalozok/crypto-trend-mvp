@@ -199,3 +199,18 @@ def test_tiny_amounts_preserve_value_and_chart_decimal_strings(private_client, m
         result = analysis.price_range(db, "BTCUSDT", STAMP - 2 * analysis.BAR, STAMP, STAMP)
     assert result["last_close"] == "0.0000001"
     assert result["points"][0]["price"] == "0.0000001"
+
+
+def test_fx_accepts_live_bare_list_response(monkeypatch):
+    analysis.try_rate.cache_clear()
+    calls = []
+
+    def get(url, **kwargs):
+        calls.append(url)
+        return response([[STAMP - analysis.BAR, "49", "50", "48", "49.17", "1", STAMP - 1]])
+
+    monkeypatch.setattr(analysis.requests, "get", get)
+    result = analysis.try_rate(STAMP, 0)
+    assert result["price"] == "49.17"
+    assert len(calls) == 1
+    analysis.try_rate.cache_clear()
