@@ -5,6 +5,7 @@ from fastapi import Depends, FastAPI, HTTPException, Query
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+import app.db.models.formation_history  # noqa: F401
 from app.db.base import Base
 from app.db.models.binance_spot import BinanceSpotCandle
 from app.db.models.candle import Candle
@@ -198,6 +199,28 @@ def formation_analysis(
         raise HTTPException(status_code=503, detail="Analysis database unavailable") from exc
     if result is None:
         raise HTTPException(status_code=404, detail="Active Binance Spot USDT symbol not found")
+    return result
+
+
+@app.get("/analysis/binance/history")
+def formation_history(
+    db: DbDep,
+    symbol: str = Query(..., min_length=1, max_length=64, pattern=r"^[A-Za-z0-9]+$"),
+    pattern: str | None = Query(None),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+):
+    from app.services.formation_history import history
+    from app.services.formations import NAMES
+
+    if pattern is not None and pattern not in NAMES:
+        raise HTTPException(status_code=422, detail="Unknown formation pattern")
+    try:
+        result = history(db, symbol.upper(), pattern, limit, offset)
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=503, detail="History database unavailable") from exc
+    if result is None:
+        raise HTTPException(status_code=404, detail="Binance Spot USDT symbol not found")
     return result
 
 

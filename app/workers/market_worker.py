@@ -17,6 +17,7 @@ def collect_market(budget=180, workers=4, limit=500):
     from app.db.models.binance_spot import BinanceSpotSymbol
     from app.db.session import SessionLocal
     from app.services.binance_collection import now_ms, refresh_symbol, sync_symbols
+    from app.services.formation_history import record_symbol
 
     deadline = monotonic() + budget
     _, rows = catalog.snapshot()
@@ -37,6 +38,15 @@ def collect_market(budget=180, workers=4, limit=500):
             with SessionLocal() as db:
                 count = refresh_symbol(db, symbol, limit)
             logger.info("binance_fetch_complete symbol=%s interval=15m candles=%s", symbol, count)
+            try:
+                with SessionLocal() as db:
+                    events = record_symbol(db, symbol, now_ms())
+                logger.info("formation_history_complete symbol=%s events=%s", symbol, events)
+            except Exception as exc:
+                logger.error(
+                    "formation_history_failed symbol=%s error=%s", symbol, type(exc).__name__
+                )
+                return False, False
             return True, False
         except Exception as exc:
             with SessionLocal() as db:

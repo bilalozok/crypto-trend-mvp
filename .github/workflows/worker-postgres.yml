@@ -37,4 +37,4 @@ jobs:
       - name: Verify PostgreSQL upserts and rollback
         env:
           TEST_POSTGRES_URL: postgresql+psycopg://test_user:test_password@localhost:5432/worker_test
-        run: python -m pytest tests/test_candle_ingestion_postgres.py -q -ra
+        run: python -m pytest tests/test_candle_ingestion_postgres.py tests/test_formation_history_postgres.py -q -ra

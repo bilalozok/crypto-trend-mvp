@@ -571,3 +571,24 @@ gösterilir. Veri hazır değilse değerlendirme `unavailable` ve formasyonlar
 boştur. Türkçe yorum, sayımlar, tüm tespit edilen yapılar ve grafik bağlantısı
 döner. Sayımlar birbirinden bağımsız başarı kanıtları değildir; rapor fiyat
 tahmini, kalibre edilmiş olasılık veya emir talimatı üretmez.
+
+
+### Gözlenen formasyon değişim geçmişi
+
+Önce `alembic upgrade head` ile `8c15c2026b01` uygulanmalıdır. İki yeni tablo
+son gözlenen durumları ve değişim olaylarını tutar; mevcut mumlar korunur.
+Worker başarılı veri toplamasından sonra yalnızca `ready` analizleri kaydeder.
+İlk tespit `initial_observation`, sonraki kayıtlar `appeared`, `changed`,
+`new_structure`, `disappeared` olabilir. İmza durum, yön, yapı başlangıcı,
+son pivot, teyit zamanı ve kırılımın korunmasını içerir; her yaş/hacim veya
+fiyat değişimi yeni olay değildir. Her coin/formasyon/kapanmış mum için
+yalnızca ilk gözlem işlenir; aynı mumun sonradan veri düzeltmeleri ayrı olay
+üretmez. PostgreSQL coin satırı kilidi eşzamanlı kayıtları sıralar; olay ve
+son durum tek transaction ile yazılır. Eksik/eski veri durumu değiştirmez.
+Atlanan mumlar için olay üretilmez; kayıt zamanları gerçek ilk oluşum zamanı
+olduğu iddiası taşımaz. Metot sürümü olayda saklanır.
+`GET /analysis/binance/history?symbol=PEOPLEUSDT&limit=50&offset=0`
+son kayıtları veri zamanına göre yeninden eskiye döndürür; `pattern` isteğe
+bağlı filtre olabilir. Endpoint salt okunurdur. İşçi history başarısızlığını
+`formation_history_failed` olarak ayrıca loglar; başarılı mum toplama kaydı
+korunur. Veri geçerliliği veya hata için sahte formasyon olayı yazılmaz.
