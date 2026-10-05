@@ -202,6 +202,38 @@ def formation_analysis(
     return result
 
 
+@app.get("/analysis/binance/similar")
+def similar_coins(
+    db: DbDep,
+    symbol: str = Query(..., min_length=1, max_length=64, pattern=r"^[A-Za-z0-9]+$"),
+    lookback_bars: int = Query(48, ge=16, le=199),
+    candidate_limit: int = Query(100, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    limit: int = Query(10, ge=1, le=100),
+    min_quote_volume: float = Query(0, ge=0, allow_inf_nan=False),
+    min_correlation: float = Query(0.3, ge=0, le=1, allow_inf_nan=False),
+):
+    from app.services.coin_similarity import similar
+
+    try:
+        result = similar(
+            db,
+            symbol.upper(),
+            now_ms(),
+            lookback_bars,
+            candidate_limit,
+            offset,
+            limit,
+            min_quote_volume,
+            min_correlation,
+        )
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=503, detail="Similarity database unavailable") from exc
+    if result is None:
+        raise HTTPException(status_code=404, detail="Active Binance Spot USDT symbol not found")
+    return result
+
+
 @app.get("/analysis/binance/history")
 def formation_history(
     db: DbDep,

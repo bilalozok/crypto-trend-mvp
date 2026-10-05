@@ -592,3 +592,26 @@ son kayıtları veri zamanına göre yeninden eskiye döndürür; `pattern` iste
 bağlı filtre olabilir. Endpoint salt okunurdur. İşçi history başarısızlığını
 `formation_history_failed` olarak ayrıca loglar; başarılı mum toplama kaydı
 korunur. Veri geçerliliği veya hata için sahte formasyon olayı yazılmaz.
+
+
+### Açıklanabilir benzer coin analizi
+
+`GET /analysis/binance/similar?symbol=PEOPLEUSDT` varsayılan son 48 adet
+15m log getirisini (12 saat) karşılaştırır. Tüm seriler aynı kapanış zamanına
+hizalanır ve mevcut 200 mum kalite kontrolünü geçmelidir. Sıfıra yakın
+varyanslı seriler korelasyon için uygun değildir; eksik/eski veri dışlanır.
+Adaylar aktif, stablecoin adayı olmayan USDT pariteleridir; referans hariçtir.
+`candidate_limit=100`, `offset`, `limit=10`, `min_quote_volume=0`,
+`min_correlation=0.3` ve `lookback_bars=48` ayarlanabilir. Her cevap yalnızca
+aday sayfasındaki en benzer sonuçları verir; `next_offset` ile tüm sayfaları
+taramak gerekir. Evren hacme göre sıralanır ve canlı yenilenebilir.
+Skor fiyat korelasyonu (%70), güncel formasyon kümelerinin Jaccard benzerliği
+(%20) ve son pencere içindeki gözlenmiş değişim türlerinin benzerliği (%10)
+bileşenlerinden oluşur. Veri olmayan bileşen kullanılmaz, kalan ağırlıklar
+yeniden normalize edilir ve cevapta gösterilir. İki boş formasyon kümesi eşleşme sayılmaz; yalnız birinin boş olması sıfır
+benzerliktir. Değişim bileşeni için iki coinde de gözlenmiş değişim gerekir.
+Oluşan yapılar ile en fazla dört mumluk, kırılımını koruyan teyitler güncel
+formasyon kümesine girer. İlk tarihçe gözlemleri değişim sayılmaz. Değişim
+kümeleri sıralama veya gecikmeli öncül/ardıl ilişki modellemez. Skor bir
+geçmiş benzerlik ölçüsüdür; gelecekte aynı hareket veya yükseliş olasılığı
+değildir. Endpoint salt okunurdur; kayıt veya dış borsa çağrısı yapmaz.
