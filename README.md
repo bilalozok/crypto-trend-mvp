@@ -775,3 +775,21 @@ cohort. Pending or invalid outcomes exclude a signal from this comparison only;
 the original summary and formation groups remain available. Empty paired cohorts
 have null return statistics. This is a completed-cohort comparison, not a
 portfolio simulation. No capture rules, fees, cooldowns or migrations change.
+
+### Saved forward reports
+
+Apply migration `ae15c2026d01` before deploying this feature. It only adds
+`binance_forward_reports`; existing signals and their outcomes are preserved.
+The dashboard creates reports for 1/7/30 days, lists saved metadata in pages,
+opens stored summaries and downloads JSON containing every captured signal.
+POST `/analysis/binance/forward/reports?days=7&request_id=<uuid>` creates a fixed
+current-rule snapshot. Reusing the UUID returns the same report; different days
+with that UUID are rejected. PostgreSQL uses REPEATABLE READ so summary and
+signal payloads share a consistent database view while the worker updates.
+Reports contain at most 10,000 signals; larger periods must be shortened.
+GET `/analysis/binance/forward/reports?limit=20&offset=0` lists metadata only.
+GET `/analysis/binance/forward/reports/{id}` opens a saved payload; append
+`/download` to download JSON. No report update or deletion endpoint is exposed.
+Pending outcomes stay pending in old reports. Reports from different times can
+overlap and are not independent samples. Creating a report never changes signal
+rules or the worker. These routes follow the existing public API access model.

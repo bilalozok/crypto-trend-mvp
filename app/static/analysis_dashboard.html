@@ -19,6 +19,7 @@
 <section><div class="section-head"><div><h2>Benzer coinler</h2><small>Son 12 saatin fiyat hareketi, güncel yapılar ve gözlenmiş değişimler.</small></div><button id="similar-load">Benzer coinleri tara</button></div><p id="similar-status" class="muted" role="status" aria-live="polite">Tarama başlatılmadı.</p><div id="similar-table"></div><p class="legend">Benzerlik skoru, gelecekte aynı hareketin olasılığı değildir. Eksik bileşenler varsa kalan ağırlıklar yeniden normalize edilir.</p></section>
 <section><div class="section-head"><div><h2>Yükseliş adayları</h2><small>Güncel, hacim destekli teyitler. Karşıt teyitler dışlanır.</small></div><button id="candidates-load">Piyasayı tara</button></div><p id="candidates-status" class="muted" role="status" aria-live="polite">Tarama başlatılmadı.</p><div id="candidates-table"></div><p class="legend">Puan: tazelik 35 + hacim 35 + kırılıma yakınlık 30. En güçlü tek formasyon esas alınır. Puan başarı veya yükseliş yüzdesi değildir.</p></section>
 <section><div class="section-head"><div><h2>İleriye dönük sonuçlar</h2><small>Son 7 gün · Tüm coinler · Güncel kural sürümü</small></div><button id="forward-load" class="secondary">Sonuçları yenile</button></div><p id="forward-status" class="muted" role="status" aria-live="polite">Sonuçlar henüz yüklenmedi.</p><div id="forward-summary"></div><h3>Aynı sinyallerle süre karşılaştırması</h3><p id="forward-paired-status" class="muted"></p><div id="forward-paired"></div><p class="legend">Yalnızca 1, 2 ve 4 saatlik sonuçlarının tümü geçerli ve tamamlanmış sinyaller. Bu alt örneklem genel özetten farklı olabilir.</p><h3>Formasyon bazında sonuçlar</h3><div id="forward-patterns"></div><h3>Son 10 sinyal</h3><div id="forward-recent"></div><details><summary>Kural sürümü</summary><p id="forward-rule" style="overflow-wrap:anywhere"></p></details><p class="legend">Ücret ve kayma sonrası varsayımsal sonuçlar. Bekleyen ve geçersiz kayıtlar ortalamaya katılmaz. Farklı sürelerde tamamlanan sinyal sayıları farklı olabilir. Başarı olasılığı veya portföy getirisi değildir.</p></section>
+<section><div class="section-head"><div><h2>Kayıtlı ileriye dönük raporlar</h2><small>Oluşturulduğu haliyle saklanır; yeni sonuçlar eski raporu değiştirmez.</small></div><div><label style="display:inline-block">Rapor dönemi <select id="saved-days" style="font:inherit;padding:10px;border-radius:8px"><option value="1">Son 1 gün</option><option value="7" selected>Son 7 gün</option><option value="30">Son 30 gün</option></select></label> <button id="saved-create">Rapor oluştur</button> <button id="saved-load" class="secondary">Listeyi yenile</button></div></div><p id="saved-status" class="muted" role="status" aria-live="polite">Kayıtlı raporlar henüz yüklenmedi.</p><div id="saved-table"></div><button id="saved-more" class="secondary" hidden>Daha fazla rapor</button><div id="saved-view" hidden><h3>Kayıtlı rapor</h3><p id="saved-description" class="muted"></p><p id="saved-view-status" role="status"></p><div id="saved-summary"></div><h3>Aynı sinyallerle süre karşılaştırması</h3><p id="saved-paired-description"></p><div id="saved-paired"></div><h3>Formasyon bazında sonuçlar</h3><div id="saved-patterns"></div><h3>Rapordaki son 10 sinyal</h3><div id="saved-recent"></div></div><p class="legend">Rapor güncel kural sürümünü kullanır ve tüm ilgili sinyalleri JSON içinde saklar. Ekranda son 10 sinyal gösterilir. En fazla 10.000 sinyal kaydedilebilir; sınır aşılırsa daha kısa bir dönem seç. Kayıtlı raporların farklı tarihlerdeki sinyalleri örtüşebilir.</p></section>
 <footer>Veri yeni mum kapanışından sonra worker tarafından güncellenir. Sonuçları incelerken veri zamanını kontrol et. Bu ekran otomatik yenilenmez.</footer>
 </main>
 <script>
@@ -116,6 +117,50 @@ async function loadForward(){
  }catch(e){message("forward-status",e.message,true)}finally{button.disabled=false}
 }
 $("forward-load").onclick=loadForward;
+let savedRows=[],savedNext=null,saveRequest=null,savedViewGeneration=0;
+function reportActions(r){
+ const box=document.createElement("span"),button=document.createElement("button"),link=document.createElement("a");
+ button.type="button";button.className="secondary";button.textContent="Aç";button.onclick=()=>openSaved(r.id);
+ link.textContent="JSON indir";link.href="/analysis/binance/forward/reports/"+encodeURIComponent(r.id)+"/download";link.style.marginLeft="12px";
+ box.append(button,link);return box;
+}
+async function loadSaved(append=false){
+ $("saved-load").disabled=true;$("saved-more").disabled=true;message("saved-status","Raporlar yükleniyor…");
+ try{const d=await getJSON("/analysis/binance/forward/reports?"+new URLSearchParams({limit:20,offset:append?(savedNext||0):0}));
+ savedRows=append?[...savedRows,...d.reports]:d.reports;savedNext=d.next_offset;
+ const unique=new Map(savedRows.map(r=>[r.id,r]));savedRows=[...unique.values()];
+ table("saved-table",["Oluşturulma (TR)","Dönem","Sinyal","Kural sürümü","Rapor"],savedRows.map(r=>[time(r.created_at),r.days+" gün",r.total_signals,r.rule_hash.slice(0,12)+"…",reportActions(r)]));
+ $("saved-more").hidden=savedNext===null;message("saved-status",d.total+" kayıtlı rapor · "+savedRows.length+" gösteriliyor.");
+ }catch(e){message("saved-status",e.message,true)}finally{$("saved-load").disabled=false;$("saved-more").disabled=false}
+}
+async function openSaved(id){
+ const token=++savedViewGeneration;$("saved-view").hidden=false;text("saved-description","");text("saved-paired-description","");message("saved-view-status","Rapor açılıyor…");
+ for(const name of ["saved-summary","saved-paired","saved-patterns","saved-recent"])$(name).replaceChildren();
+ try{const r=await getJSON("/analysis/binance/forward/reports/"+encodeURIComponent(id));if(token!==savedViewGeneration)return;const d=r.summary;
+ text("saved-description",time(r.created_at)+" Türkiye saati · "+d.days+" gün · "+d.total_signals+" sinyal · Kural: "+d.rule_hash);
+ message("saved-view-status","Kaydedilmiş görünüm; sonradan gelen sonuçlarla güncellenmez.");
+ const pct=v=>v==null?"—":number(v,3)+"%";
+ table("saved-summary",["Süre","Tamamlanan","Bekleyen","Geçersiz","Pozitif net oranı","Ortalama net","Medyan net"],d.horizons.map(h=>[h.hours+" saat",h.completed,h.pending,h.invalid,pct(h.positive_net_rate_pct),pct(h.mean_net_return_pct),pct(h.median_net_return_pct)]));
+ const paired=d.paired_comparison;text("saved-paired-description",paired.total_signals+" ortak sinyal · "+paired.excluded_signals+" dışlanan sinyal");
+ table("saved-paired",["Süre","Ortak sinyal","Pozitif net oranı","Ortalama net","Medyan net"],paired.horizons.map(h=>[h.hours+" saat",h.completed,pct(h.positive_net_rate_pct),pct(h.mean_net_return_pct),pct(h.median_net_return_pct)]));
+ table("saved-patterns",["Formasyon","Sinyal","Süre","Tamamlanan","Bekleyen","Geçersiz","Ortalama net"],d.pattern_groups.flatMap(g=>g.horizons.map(h=>[g.pattern_name,g.total_signals,h.hours+" saat",h.completed,h.pending,h.invalid,pct(h.mean_net_return_pct)])));
+ const result=v=>v.status==="complete"?pct(v.net_return_pct):v.status==="pending"?"Bekliyor":"Geçersiz veri";
+ table("saved-recent",["Coin","Formasyon","Puan","Planlanan giriş (TR)","1 saat","2 saat","4 saat"],d.recent_signals.map(r=>[r.symbol,r.pattern_name,number(r.evidence_score),time(r.scheduled_entry_time),result(r.outcomes["4"]),result(r.outcomes["8"]),result(r.outcomes["16"])]));
+ }catch(e){if(token===savedViewGeneration)message("saved-view-status",e.message,true)}
+}
+async function createSaved(){
+ const days=Number($("saved-days").value),button=$("saved-create");
+ if(!saveRequest||saveRequest.days!==days)saveRequest={days,id:crypto.randomUUID()};
+ button.disabled=true;$("saved-days").disabled=true;message("saved-status","Rapor oluşturuluyor…");
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),90000);
+ try{const response=await fetch("/analysis/binance/forward/reports?"+new URLSearchParams({days,request_id:saveRequest.id}),{method:"POST",signal:controller.signal});
+ if(!response.ok){let detail="Rapor oluşturulamadı (HTTP "+response.status+").";try{const error=await response.json();if(typeof error.detail==="string")detail=error.detail}catch{}throw new Error(detail)}
+ const r=await response.json();saveRequest=null;await loadSaved();await openSaved(r.id);
+ }catch(e){message("saved-status",e.name==="AbortError"?"İstek zaman aşımına uğradı. Aynı dönemde tekrar basarak kaydın durumunu kontrol edebilirsin.":e.message,true)}
+ finally{clearTimeout(timer);button.disabled=false;$("saved-days").disabled=false}
+}
+$("saved-create").onclick=createSaved;$("saved-load").onclick=()=>loadSaved();$("saved-more").onclick=()=>loadSaved(true);
+
 
 const initial=new URLSearchParams(location.search).get("symbol");if(initial&&/^[A-Za-z0-9]{1,64}$/.test(initial))$("symbol").value=initial;loadCoin();
 </script></body></html>

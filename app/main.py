@@ -1,11 +1,13 @@
 from datetime import UTC, datetime
 from typing import Annotated, Literal
+from uuid import UUID
 
 from fastapi import Depends, FastAPI, HTTPException, Query
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 import app.db.models.formation_history  # noqa: F401
+import app.db.models.forward_report  # noqa: F401
 import app.db.models.forward_signal  # noqa: F401
 from app.db.base import Base
 from app.db.models.binance_spot import BinanceSpotCandle
@@ -433,3 +435,56 @@ def forward_summary(
         return summarize(db, now_ms(), days, rule_hash)
     except SQLAlchemyError as exc:
         raise HTTPException(status_code=503, detail="Forward summary database unavailable") from exc
+
+
+@app.post("/analysis/binance/forward/reports", status_code=201)
+def create_forward_report(
+    db: DbDep,
+    days: int = Query(7, ge=1, le=30),
+    request_id: UUID | None = None,
+):
+    from app.services.forward_reports import create_report
+
+    try:
+        return create_report(db, now_ms(), days, str(request_id) if request_id else None)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=503, detail="Report database unavailable") from exc
+
+
+@app.get("/analysis/binance/forward/reports")
+def forward_reports(db: DbDep, limit: int = Query(20, ge=1, le=100), offset: int = Query(0, ge=0)):
+    from app.services.forward_reports import list_reports
+
+    try:
+        return list_reports(db, limit, offset)
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=503, detail="Report database unavailable") from exc
+
+
+@app.get("/analysis/binance/forward/reports/{report_id}")
+def stored_forward_report(report_id: UUID, db: DbDep):
+    from app.db.models.forward_report import ForwardReport
+
+    try:
+        row = db.get(ForwardReport, str(report_id))
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=503, detail="Report database unavailable") from exc
+    if row is None:
+        raise HTTPException(status_code=404, detail="Saved report not found")
+    return row.payload
+
+
+@app.get("/analysis/binance/forward/reports/{report_id}/download")
+def download_forward_report(report_id: UUID, db: DbDep):
+    import json
+
+    from fastapi.responses import Response
+
+    payload = stored_forward_report(report_id, db)
+    return Response(
+        content=json.dumps(payload, ensure_ascii=False, indent=2, allow_nan=False) + "\n",
+        media_type="application/json",
+        headers={"Content-Disposition": f'attachment; filename="forward_report_{report_id}.json"'},
+    )
