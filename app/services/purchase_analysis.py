@@ -1,5 +1,6 @@
 """Private acquisition valuation using aligned, closed public market prices."""
 
+import logging
 from decimal import Decimal, InvalidOperation, localcontext
 from functools import lru_cache
 
@@ -10,6 +11,7 @@ from app.db.models.binance_spot import BinanceSpotCandle, BinanceSpotSymbol
 from app.services.formations import timestamp
 
 BAR = 900_000
+logger = logging.getLogger(__name__)
 
 
 def number(value):
@@ -58,20 +60,43 @@ def try_rate(close_ms, retry_bucket):
                 timeout=(3, 4),
                 allow_redirects=False,
             )
-            response.raise_for_status()
+            if response.status_code != 200:
+                logger.warning(
+                    "try_rate_unavailable source=%s reason=http_%s close_ms=%s",
+                    url,
+                    response.status_code,
+                    close_ms,
+                )
+                continue
             payload = response.json()
             if isinstance(payload, dict):
                 if payload.get("code") != 0:
+                    logger.warning(
+                        "try_rate_unavailable source=%s reason=api_error close_ms=%s", url, close_ms
+                    )
                     continue
                 rows = payload.get("data")
             else:
                 rows = payload
             if not isinstance(rows, list) or len(rows) != 1:
+                logger.warning(
+                    "try_rate_unavailable source=%s reason=missing_candle close_ms=%s",
+                    url,
+                    close_ms,
+                )
                 continue
             row = rows[0]
             if not isinstance(row, list) or len(row) < 7:
+                logger.warning(
+                    "try_rate_unavailable source=%s reason=invalid_shape close_ms=%s", url, close_ms
+                )
                 continue
             if int(row[0]) != close_ms - BAR or int(row[6]) != close_ms - 1:
+                logger.warning(
+                    "try_rate_unavailable source=%s reason=wrong_candle_time close_ms=%s",
+                    url,
+                    close_ms,
+                )
                 continue
             rate = number(row[4])
             opened, high, low = (number(row[i]) for i in (1, 2, 3))
@@ -84,7 +109,16 @@ def try_rate(close_ms, retry_bucket):
                     candle_close_time=timestamp(close_ms),
                     source="Binance TR USDT/TRY · kapanmış 15m mum",
                 )
-        except (requests.RequestException, ValueError, TypeError, IndexError, OverflowError):
+            logger.warning(
+                "try_rate_unavailable source=%s reason=invalid_price close_ms=%s", url, close_ms
+            )
+        except (requests.RequestException, ValueError, TypeError, IndexError, OverflowError) as exc:
+            logger.warning(
+                "try_rate_unavailable source=%s reason=%s close_ms=%s",
+                url,
+                type(exc).__name__,
+                close_ms,
+            )
             continue
     return None
 

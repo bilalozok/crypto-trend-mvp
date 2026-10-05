@@ -4,12 +4,16 @@ from types import SimpleNamespace
 import pytest
 import requests
 from test_private_purchases import STAMP, auth, record
+from test_private_purchases import private_client as purchase_client_setup
 
 from app.db.models.binance_spot import BinanceSpotCandle
 from app.db.session import SessionLocal
 from app.services import purchase_analysis as analysis
 
-pytest_plugins = ("test_private_purchases",)
+
+@pytest.fixture
+def private_client(monkeypatch):
+    yield from purchase_client_setup.__wrapped__(monkeypatch)
 
 
 def seed(opened=None, price=12, low=9, high=13, open_price=10):
@@ -126,7 +130,7 @@ def test_partial_bar_start_excluded(private_client):
 
 
 def response(data):
-    return SimpleNamespace(raise_for_status=lambda: None, json=lambda: data)
+    return SimpleNamespace(status_code=200, raise_for_status=lambda: None, json=lambda: data)
 
 
 def test_fx_exact_time_positive_decimal_and_documented_fallback(monkeypatch):
