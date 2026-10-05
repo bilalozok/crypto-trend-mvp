@@ -202,6 +202,16 @@ def formation_analysis(
     return result
 
 
+@app.get("/analysis/binance/dashboard", include_in_schema=False)
+def analysis_dashboard():
+    from pathlib import Path
+
+    from fastapi.responses import HTMLResponse
+
+    page = Path(__file__).resolve().parent / "static" / "analysis_dashboard.html"
+    return HTMLResponse(page.read_text(encoding="utf-8"))
+
+
 @app.get("/analysis/binance/candidates")
 def bullish_candidates(
     db: DbDep,

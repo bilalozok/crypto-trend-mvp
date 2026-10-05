@@ -637,3 +637,18 @@ türetilmemiştir. Sonuç başarı/yükseliş olasılığı veya emir talimatı 
 aday sayfasına aittir; tüm evren için `next_offset` ile sayfalar birleştirilir.
 `candle_close_time` tüm sayfalarda aynı olmalıdır. Yeni kayıt, migration
 veya dış borsa çağrısı gerektirmez.
+
+
+### Birleşik analiz ekranı
+
+`/analysis/binance/dashboard?symbol=PEOPLEUSDT` coin seçimi, grafik, Türkçe
+rapor, geçmiş ve tarama sonuçlarını bir araya getirir. Rapor ve geçmiş coin
+seçildiğinde yüklenir. Benzer coinler ve yükseliş adayları düğme ile tüm
+aday sayfalarını tarar; ekran genel sıralamayı birleştirir. Sayfalar arasında
+mum veya evren değişirse sonuç yayımlanmaz, yeniden tarama istenir.
+Kalite nedeniyle dışlanan coinler ve kısmi sonuç durumu gösterilir. Coin
+değişiminde eski istekler iptal edilir. Bir taramadaki aynı coin kayıtları
+tekilleştirilir. Katalog alınamazsa coin elle girilebilir. Grafik ayrı
+panelde aynı coini açar; embed görünümünde coin değişimi ana ekrandan yapılır.
+Otomatik yenileme, emir gönderme veya veri tabanına yazma yoktur. Skorlar
+olasılık yüzdesi olarak gösterilmez.

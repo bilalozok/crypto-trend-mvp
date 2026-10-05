@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Crypto Trend · Analiz merkezi</title>
+<style>
+:root{--ink:#142438;--muted:#627386;--line:#dfe6ec;--green:#087b70;--soft:#eef7f5;--bg:#f3f6f9}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px system-ui,-apple-system,sans-serif}header{background:#142438;color:white;padding:22px max(20px,calc((100vw - 1260px)/2));display:flex;justify-content:space-between;gap:20px;align-items:center}header strong{font-size:20px;letter-spacing:-.5px}header span{font-size:13px;color:#a8c6cb}main{max-width:1300px;margin:28px auto;padding:0 20px 50px}h1{font-size:30px;letter-spacing:-1px;margin:0 0 8px}h2{font-size:19px;margin:0}p{line-height:1.6}.muted,small{color:var(--muted)}.intro{display:flex;justify-content:space-between;gap:20px;align-items:center}.chip{background:var(--soft);color:var(--green);padding:7px 12px;border-radius:30px;font-size:12px;font-weight:600}.toolbar,section{background:white;border:1px solid var(--line);border-radius:14px;padding:22px;margin-top:18px}.toolbar{display:flex;align-items:end;gap:12px;flex-wrap:wrap}label{display:grid;gap:6px;font-size:13px;font-weight:600}input,button{font:inherit;border-radius:8px;padding:11px 15px;border:1px solid #b9c8d4}input{text-transform:uppercase;width:210px}button{background:var(--green);color:white;border-color:var(--green);cursor:pointer}button:disabled{opacity:.55;cursor:wait}button.secondary{background:white;color:var(--green)}a{color:var(--green)}.section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:18px}.stat{padding:20px;background:white;border:1px solid var(--line);border-radius:12px}.stat strong{display:block;font-size:26px;margin-top:8px}.grid{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(300px,1fr);gap:18px}.grid section{min-width:0}.notice{padding:13px 15px;background:var(--soft);color:#14594f;border-radius:8px}.notice[data-error=true]{background:#fff3df;color:#7b4c00}.table-wrap{overflow:auto;margin-top:16px}table{border-collapse:collapse;width:100%;font-size:13px;text-align:left}th{font-weight:600;color:var(--muted);background:#f7f9fb}th,td{padding:12px 10px;border-bottom:1px solid var(--line);white-space:nowrap}td .coin{padding:0;border:0;background:none;color:var(--green);font-weight:650}iframe{width:100%;height:720px;border:0;margin-top:12px}#report-comment{font-size:17px;line-height:1.7}.legend{font-size:12px;color:var(--muted)}footer{margin-top:20px;font-size:12px;color:var(--muted)}#catalog-status{font-size:12px;margin:0}details{margin-top:15px}summary{cursor:pointer;color:var(--green)}@media(max-width:900px){.grid{grid-template-columns:1fr}.intro{align-items:start}.stats{grid-template-columns:repeat(2,1fr)}iframe{height:680px}}@media(max-width:480px){header span{display:none}main{padding:0 12px}section,.toolbar{padding:16px}.intro{display:block}.chip{display:inline-block;margin-top:8px}h1{font-size:26px}input{width:180px}.stat{padding:14px}iframe{height:650px}}
+</style></head>
+<body>
+<header><strong>Crypto Trend<span> / Analiz merkezi</span></strong><span>Binance Spot · USDT · 15 dakika</span></header>
+<main>
+<div class="intro"><div><h1>Piyasayı yapısıyla oku.</h1><p class="muted">Kapanmış mumlar, 20 formasyon ve açıklanabilir analiz.</p></div><span class="chip">Deneysel analiz · Emir gönderilmez</span></div>
+<form id="coin-form" class="toolbar"><label>İncelenecek coin<input id="symbol" list="symbols" value="BTCUSDT" pattern="[A-Za-z0-9]+" maxlength="64" required autocomplete="off"></label><datalist id="symbols"></datalist><button id="analyze" type="submit">Analizi aç / Yenile</button><p id="catalog-status" class="muted">Coin kataloğu yükleniyor…</p></form>
+<p id="overall" class="notice" role="status" aria-live="polite">Analiz yükleniyor…</p>
+<div class="stats"><div class="stat"><small>Değerlendirilen formasyon</small><strong id="stat-total">—</strong></div><div class="stat"><small>Oluşan yapılar</small><strong id="stat-forming">—</strong></div><div class="stat"><small>Güncel yükseliş teyidi</small><strong id="stat-up">—</strong></div><div class="stat"><small>Güncel düşüş teyidi</small><strong id="stat-down">—</strong></div></div>
+<div class="grid"><section><div class="section-head"><h2 id="chart-title">Mum ve formasyon grafiği</h2><a id="chart-link" target="_blank" rel="noopener">Ayrı aç ↗</a></div><iframe id="chart" title="Seçilen coinin kapanmış mum ve formasyon grafiği"></iframe></section><section><div class="section-head"><h2>Coin raporu</h2><span class="chip" id="assessment">—</span></div><p id="report-comment">Yükleniyor…</p><p id="report-time" class="muted"></p><div id="patterns"></div><p class="legend">Güncel teyit: en fazla 4 mumluk ve kırılımını koruyan yapı. Hacim eşiği: 1,5x. Formasyon sayısı bağımsız kanıt sayısı değildir.</p></section></div>
+<section><div class="section-head"><h2>Formasyon değişim geçmişi</h2><button id="history-load" class="secondary">Geçmişi yenile</button></div><p id="history-status" class="muted" role="status"></p><div id="history-table"></div><p class="legend">Son 20 kayıt gösterilir. Başlangıç gözlemi, formasyonun ilk oluşum zamanı değildir; kayıt öncesi olaylar üretilmez.</p></section>
+<section><div class="section-head"><div><h2>Benzer coinler</h2><small>Son 12 saatin fiyat hareketi, güncel yapılar ve gözlenmiş değişimler.</small></div><button id="similar-load">Benzer coinleri tara</button></div><p id="similar-status" class="muted" role="status" aria-live="polite">Tarama başlatılmadı.</p><div id="similar-table"></div><p class="legend">Benzerlik skoru, gelecekte aynı hareketin olasılığı değildir. Eksik bileşenler varsa kalan ağırlıklar yeniden normalize edilir.</p></section>
+<section><div class="section-head"><div><h2>Yükseliş adayları</h2><small>Güncel, hacim destekli teyitler. Karşıt teyitler dışlanır.</small></div><button id="candidates-load">Piyasayı tara</button></div><p id="candidates-status" class="muted" role="status" aria-live="polite">Tarama başlatılmadı.</p><div id="candidates-table"></div><p class="legend">Puan: tazelik 35 + hacim 35 + kırılıma yakınlık 30. En güçlü tek formasyon esas alınır. Puan başarı veya yükseliş yüzdesi değildir.</p></section>
+<footer>Veri yeni mum kapanışından sonra worker tarafından güncellenir. Sonuçları incelerken veri zamanını kontrol et. Bu ekran otomatik yenilenmez.</footer>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const states={forming:"Oluşuyor",confirmed:"Teyitli",invalidated:"Geçersiz",not_detected:"Yok"};
+const directions={up:"Yükseliş",down:"Düşüş",neutral:"Nötr"};
+const assessments={bullish_setup:"Yükseliş yapısı",bearish_setup:"Düşüş yapısı",conflicting:"Çelişkili",waiting:"İzle",unavailable:"Veri hazır değil"};
+const qualities={ready:"Güncel",stale_data:"Veri eski; worker güncellemesi bekleniyor",missing_data:"Mum boşluğu var",invalid_data:"Veri geçersiz",insufficient_data:"Yeterli mum yok",reference_no_variation:"Referans fiyatta yeterli değişim yok"};
+let selected="BTCUSDT",generation=0,selectionController=null;
+const jobs={};
+function text(id,value){$(id).textContent=value}
+function number(value,digits=2){return value==null?"—":Number(value).toLocaleString("tr-TR",{maximumFractionDigits:digits})}
+function time(value){return value?new Date(value).toLocaleString("tr-TR",{timeZone:"Europe/Istanbul"}):"—"}
+function message(id,value,error=false){text(id,value);$(id).dataset.error=String(error);$(id).className="notice"}
+async function getJSON(path,signal){
+ const controller=new AbortController();const abort=()=>controller.abort();
+ if(signal){if(signal.aborted)abort();else signal.addEventListener("abort",abort,{once:true})}
+ const timer=setTimeout(abort,90000);
+ try{const r=await fetch(path,{signal:controller.signal});if(!r.ok)throw new Error(r.status===404?"Coin bulunamadı.":"Veri alınamadı (HTTP "+r.status+").");return await r.json()}
+ catch(e){if(controller.signal.aborted&&!signal?.aborted)throw new Error("İstek zaman aşımına uğradı; tekrar dene.");throw e}
+ finally{clearTimeout(timer);if(signal)signal.removeEventListener("abort",abort)}
+}
+function table(id,headers,rows){
+ const wrap=document.createElement("div");wrap.className="table-wrap";
+ const t=document.createElement("table"),head=document.createElement("thead"),body=document.createElement("tbody"),tr=document.createElement("tr");
+ for(const title of headers){const cell=document.createElement("th");cell.scope="col";cell.textContent=title;tr.append(cell)}head.append(tr);
+ for(const row of rows){const r=document.createElement("tr");for(const value of row){const c=document.createElement("td");if(value instanceof Node)c.append(value);else c.textContent=value;r.append(c)}body.append(r)}t.append(head,body);wrap.append(t);$(id).replaceChildren(wrap);
+}
+function coinButton(symbol){const b=document.createElement("button");b.type="button";b.className="coin";b.textContent=symbol;b.onclick=()=>{$("symbol").value=symbol;loadCoin();window.scrollTo({top:0,behavior:"smooth"})};return b}
+function newJob(name){if(jobs[name])jobs[name].abort();const c=new AbortController();jobs[name]=c;return c}
+async function loadHistory(token=generation){
+ const c=newJob("history");$("history-load").disabled=true;$("history-table").replaceChildren();message("history-status","Geçmiş yükleniyor…");
+ try{const data=await getJSON("/analysis/binance/history?"+new URLSearchParams({symbol:selected,limit:20}),c.signal);if(token!==generation||c.signal.aborted)return;
+ table("history-table",["Gözlem (Türkiye)","Olay","Formasyon","Önce → Sonra"],data.events.map(e=>[time(e.observed_at),({initial_observation:"Başlangıç gözlemi",changed:"Durum değişimi",appeared:"Yeni tespit",disappeared:"Artık tespit edilmiyor",new_structure:"Yeni yapı"})[e.event_type]||e.event_type,e.current.name||e.pattern,(e.previous?(states[e.previous.status]||e.previous.status):"—")+" → "+(states[e.current.status]||e.current.status)]));message("history-status",data.total?data.total+" kayıt · son "+data.events.length+" gösteriliyor.":"Henüz gözlenen formasyon kaydı yok.");
+ }catch(e){if(token===generation&&!c.signal.aborted)message("history-status",e.message,true)}finally{if(jobs.history===c)$("history-load").disabled=false}
+}
+async function loadCoin(){
+ const symbol=$("symbol").value.trim().toUpperCase();if(!/^[A-Z0-9]{1,64}$/.test(symbol)){message("overall","Geçerli bir USDT paritesi gir.",true);return}
+ selected=symbol;const token=++generation;if(selectionController)selectionController.abort();selectionController=new AbortController();for(const c of Object.values(jobs))c.abort();
+ for(const name of ["similar","candidates"]){$(name+"-table").replaceChildren();message(name+"-status","Tarama başlatılmadı.");$(name+"-load").disabled=false}
+ $("patterns").replaceChildren();for(const id of ["stat-total","stat-forming","stat-up","stat-down"])text(id,"—");text("assessment","—");text("report-comment","Yükleniyor…");text("report-time","");
+ const path="/analysis/binance/chart?"+new URLSearchParams({symbol,embed:1});$("chart").src=path;$("chart-link").href="/analysis/binance/chart?"+new URLSearchParams({symbol});text("chart-title",symbol+" · 15m");history.replaceState(null,"","?"+new URLSearchParams({symbol}));
+ message("overall",symbol+" analizi yükleniyor…");$("analyze").disabled=true;loadHistory(token);
+ try{const data=await getJSON("/analysis/binance/report?"+new URLSearchParams({symbol}),selectionController.signal);if(token!==generation)return;
+ message("overall",symbol+" · "+(qualities[data.status]||data.status)+" · Sorgu: "+time(data.as_of)+" Türkiye saati",data.status!=="ready");
+ text("assessment",assessments[data.assessment]||data.assessment);text("report-comment",data.commentary);text("stat-total",data.counts.patterns_evaluated);text("stat-forming",data.counts.forming);text("stat-up",data.counts.current_up);text("stat-down",data.counts.current_down);
+ const close=data.patterns[0]?.last_candle_close_time;text("report-time",close?"Son veri kapanışı: "+time(close)+" · Türkiye saati":"Tespit edilen yapı yok veya veri hazır değil.");
+ table("patterns",["Formasyon","Durum","Yön","Teyit yaşı","Hacim"],data.patterns.map(p=>[p.name,(states[p.status]||p.status)+(p.status==="confirmed"&&!p.current_confirmation?" · Güncel özete alınmadı":""),directions[p.direction]||p.direction,p.confirmation_age_bars==null?"—":p.confirmation_age_bars+" mum",p.volume_ratio==null?"—":number(p.volume_ratio)+"x"]));
+ }catch(e){if(token===generation){message("overall",e.name==="AbortError"?"İstek zaman aşımına uğradı; tekrar dene.":e.message,true);text("report-comment","Rapor alınamadı.")}}finally{if(token===generation)$("analyze").disabled=false}
+}
+async function fetchPages(kind,signal,progress){
+ let offset=0,closed=null,total=null,scanned=0;const unique=new Map(),quality={};
+ while(true){const params=new URLSearchParams({candidate_limit:100,limit:100,offset});if(kind==="similar")params.set("symbol",selected);
+ const d=await getJSON("/analysis/binance/"+kind+"?"+params,signal);
+ if(kind==="similar"&&d.status!=="ready")throw new Error(qualities[d.status]||"Referans veri hazır değil.");
+ const close=kind==="similar"?d.reference_candle_close_time:d.candle_close_time;
+ if(closed===null){closed=close;total=d.total_eligible_symbols}else if(closed!==close||total!==d.total_eligible_symbols)throw new Error("Tarama sırasında mum veya coin evreni değişti; yeniden tara.");
+ scanned+=d.scanned_symbols;for(const [k,v] of Object.entries(d.quality_counts))quality[k]=(quality[k]||0)+v;
+ for(const row of (kind==="similar"?d.matches:d.candidates))unique.set(row.symbol,row);
+ progress(scanned,total);
+ if(d.next_offset===null)break;if(d.next_offset<=offset||d.scanned_symbols===0)throw new Error("Sayfalama ilerlemedi; yeniden dene.");offset=d.next_offset;
+ }
+ const rows=[...unique.values()];rows.sort(kind==="similar"?(a,b)=>b.similarity_score-a.similarity_score||b.return_correlation-a.return_correlation||a.symbol.localeCompare(b.symbol):(a,b)=>b.evidence_score-a.evidence_score||b.quote_volume_24h-a.quote_volume_24h||a.symbol.localeCompare(b.symbol));
+ return {rows,scanned,closed,quality};
+}
+async function scanAll(kind){
+ const c=newJob(kind),token=generation;$(kind+"-load").disabled=true;$(kind+"-table").replaceChildren();message(kind+"-status","Piyasa taranıyor…");
+ try{const d=await fetchPages(kind,c.signal,(n,t)=>{if(token===generation)message(kind+"-status",n+" / "+t+" aday tarandı…")});if(token!==generation||c.signal.aborted)return;
+ const ready=d.quality.ready||0,excluded=d.scanned-ready;
+ message(kind+"-status",d.scanned+" aday tarandı · "+ready+" karşılaştırılabilir · "+excluded+" veri nedeniyle dışlandı · "+d.rows.length+" sonuç · Kapanış: "+time(d.closed)+(excluded?" · Kısmi veri kapsamı":""),excluded>0);
+ if(!d.rows.length){text(kind+"-table","Bu taramada filtreleri geçen aday yok.");return}
+ if(kind==="similar")table("similar-table",["Coin","Skor","Korelasyon","Ortak yapı","Kullanılan bileşenler"],d.rows.slice(0,20).map(r=>[coinButton(r.symbol),number(r.similarity_score),number(r.return_correlation,3),r.shared_formations.map(p=>p.pattern).join(", ")||"—",Object.keys(r.weights_used).map(k=>({price_correlation:"Fiyat",formation_overlap:"Formasyon",change_overlap:"Değişim"})[k]).join(" + ")]));
+ else table("candidates-table",["Coin","Puan","Ana formasyon","Teyit yaşı","Hacim","Kırılıma uzaklık"],d.rows.slice(0,20).map(r=>[coinButton(r.symbol),number(r.evidence_score),r.primary_pattern.name,r.primary_pattern.confirmation_age_bars+" mum",number(r.primary_pattern.volume_ratio)+"x",number(r.primary_pattern.distance_from_breakout_pct)+"%"]));
+ }catch(e){if(token===generation&&!c.signal.aborted)message(kind+"-status",e.message,true)}finally{if(jobs[kind]===c)$(kind+"-load").disabled=false}
+}
+$("coin-form").onsubmit=e=>{e.preventDefault();loadCoin()};$("history-load").onclick=()=>loadHistory();$("similar-load").onclick=()=>scanAll("similar");$("candidates-load").onclick=()=>scanAll("candidates");
+(async()=>{try{const d=await getJSON("/market/binance/symbols?limit=1000");for(const coin of d.symbols){const o=document.createElement("option");o.value=coin.symbol;$("symbols").append(o)}text("catalog-status",d.symbols.length+" USDT paritesi · elle de girebilirsin.")}catch{ text("catalog-status","Katalog alınamadı; coini elle girebilirsin.")}})();
+const initial=new URLSearchParams(location.search).get("symbol");if(initial&&/^[A-Za-z0-9]{1,64}$/.test(initial))$("symbol").value=initial;loadCoin();
+</script></body></html>

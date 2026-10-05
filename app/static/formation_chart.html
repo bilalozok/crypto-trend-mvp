@@ -101,6 +101,13 @@ async function load(){
  finally{if(token===sequence)el("load").disabled=false}
 }
 el("form").onsubmit=e=>{e.preventDefault();load()};el("pattern").onchange=draw;
+if(new URLSearchParams(location.search).get("embed")==="1"){
+ document.querySelector("h1").hidden=true;
+ document.querySelector("main > p").hidden=true;
+ el("form").querySelector("label").style.display="none";
+ el("load").hidden=true;
+ document.querySelector("main").style.margin="8px auto";
+}
 const initial=new URLSearchParams(location.search).get("symbol");if(initial)el("symbol").value=initial;
 load();
 </script></body></html>
