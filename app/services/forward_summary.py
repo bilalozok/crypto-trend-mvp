@@ -78,6 +78,27 @@ def summarize(db, stamp, days=7, fingerprint=None):
         )
         for name, group in sorted(grouped.items())
     ]
+    paired = []
+    for row in rows:
+        valid = True
+        for bars in (4, 8, 16):
+            outcome = row.outcomes.get(str(bars)) or {}
+            value = (outcome.get("result") or {}).get("net_return_pct")
+            if (
+                outcome.get("status") != "complete"
+                or type(value) not in (int, float)
+                or not math.isfinite(value)
+            ):
+                valid = False
+                break
+        if valid:
+            paired.append(row)
+    paired_comparison = dict(
+        total_signals=len(paired),
+        excluded_signals=len(rows) - len(paired),
+        unique_symbols=len({row.symbol for row in paired}),
+        horizons=horizon_summary(paired),
+    )
     recent = []
     for row in rows[:10]:
         values = {}
@@ -117,6 +138,7 @@ def summarize(db, stamp, days=7, fingerprint=None):
         horizons=horizons,
         recent_signals=recent,
         pattern_groups=pattern_groups,
+        paired_comparison=paired_comparison,
         note=(
             "Same-rule hypothetical signal outcomes; "
             "pending and invalid results excluded from return statistics."

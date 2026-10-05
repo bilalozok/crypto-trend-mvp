@@ -123,3 +123,41 @@ def test_empty_pattern_groups(client):
     with SessionLocal() as db:
         assert summarize(db, 200 * BAR, fingerprint="a" * 64)["pattern_groups"] == []
     assert 'id="forward-patterns"' in client.get("/analysis/binance/dashboard").text
+
+
+def test_paired_comparison_uses_identical_complete_cohort():
+    def outcomes(values):
+        return {
+            str(b): dict(status="complete", result=dict(net_return_pct=v))
+            for b, v in zip((4, 8, 16), values, strict=True)
+        }
+
+    with SessionLocal() as db:
+        add(db, "a" * 64, outcomes=outcomes((1, -2, 3)))
+        add(db, "a" * 64, observed=191 * BAR, outcomes=outcomes((-1, 4, 5)))
+        add(
+            db,
+            "a" * 64,
+            observed=192 * BAR,
+            outcomes={"4": dict(status="complete", result=dict(net_return_pct=100))},
+        )
+        add(db, "a" * 64, observed=193 * BAR, outcomes=outcomes((9, 9, "bad")))
+        result = summarize(db, 200 * BAR, fingerprint="a" * 64)
+        paired = result["paired_comparison"]
+        assert paired["total_signals"] == 2 and paired["excluded_signals"] == 2
+        assert paired["unique_symbols"] == 1
+        assert [h["completed"] for h in paired["horizons"]] == [2, 2, 2]
+        assert [h["mean_net_return_pct"] for h in paired["horizons"]] == [0, 1, 4]
+        assert [h["median_net_return_pct"] for h in paired["horizons"]] == [0, 1, 4]
+        assert [h["positive_net_rate_pct"] for h in paired["horizons"]] == [50, 50, 100]
+        assert result["horizons"][0]["completed"] == 4
+        assert all(h["pending"] == h["invalid"] == 0 for h in paired["horizons"])
+
+
+def test_paired_without_fully_settled_signals_has_no_return_statistics(client):
+    with SessionLocal() as db:
+        add(db, "a" * 64)
+        result = summarize(db, 200 * BAR, fingerprint="a" * 64)["paired_comparison"]
+        assert result["total_signals"] == 0 and result["excluded_signals"] == 1
+        assert all(h["mean_net_return_pct"] is None for h in result["horizons"])
+    assert 'id="forward-paired"' in client.get("/analysis/binance/dashboard").text

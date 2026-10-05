@@ -766,3 +766,12 @@ for 1/2/4 hours. The dashboard displays these counts without ranking formations.
 Groups share the selected rule fingerprint and observation window. Different
 horizons can have different completed cohorts; small samples do not establish
 future success probabilities. Signal capture rules and migrations are unchanged.
+
+### Paired forward horizon comparison
+
+`paired_comparison` uses only observed signals with valid completed net returns
+for all three horizons. Each horizon therefore reports exactly the same signal
+cohort. Pending or invalid outcomes exclude a signal from this comparison only;
+the original summary and formation groups remain available. Empty paired cohorts
+have null return statistics. This is a completed-cohort comparison, not a
+portfolio simulation. No capture rules, fees, cooldowns or migrations change.
