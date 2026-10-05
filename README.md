@@ -615,3 +615,25 @@ formasyon kümesine girer. İlk tarihçe gözlemleri değişim sayılmaz. Deği�
 kümeleri sıralama veya gecikmeli öncül/ardıl ilişki modellemez. Skor bir
 geçmiş benzerlik ölçüsüdür; gelecekte aynı hareket veya yükseliş olasılığı
 değildir. Endpoint salt okunurdur; kayıt veya dış borsa çağrısı yapmaz.
+
+
+### Açıklanabilir yükseliş adayı sıralaması
+
+`GET /analysis/binance/candidates` aktif, stablecoin adayı olmayan USDT
+paritelerinde mevcut formasyon taramasını kullanır. Varsayılan en fazla
+dört mumluk teyit, korunan kırılım ve en az 1.5x teyit hacmi gerekir.
+Her coin için en yüksek puanlı tek yükseliş formasyonu esas alınır; aynı
+fiyattan türeyen çok sayıda yapı ekstra puan getirmez. Güncel ve kırılımını
+koruyan düşüş teyidi varsa coin dışlanır; `include_conflicting=true` seçilirse
+30 puan ceza ve karşıt yapıların ayrıntıları gösterilir.
+Puan bileşenleri: tazelik `35*(1-age/(max_age+1))`, hacim
+`35*min(volume_ratio/max(3,2*min_volume_ratio),1)`, yakınlık
+`30*max(0,1-abs(distance_from_breakout_pct)/3)`. Yakınlık bileşeni
+kırılımdan fazla uzaklaşmış fiyatlara düşük puan verir. Ağırlıklar, üç yüzde
+uzaklık ve hacim doygunluğu deneysel ürün kurallarıdır; başarı oranlarından
+türetilmemiştir. Sonuç başarı/yükseliş olasılığı veya emir talimatı değildir.
+`candidate_limit=100`, `offset`, `limit=10`, `max_confirmation_age_bars=4`,
+`min_volume_ratio=1.5`, `min_quote_volume=0` ayarlanabilir. Sonuç yalnızca
+aday sayfasına aittir; tüm evren için `next_offset` ile sayfalar birleştirilir.
+`candle_close_time` tüm sayfalarda aynı olmalıdır. Yeni kayıt, migration
+veya dış borsa çağrısı gerektirmez.

@@ -202,6 +202,35 @@ def formation_analysis(
     return result
 
 
+@app.get("/analysis/binance/candidates")
+def bullish_candidates(
+    db: DbDep,
+    candidate_limit: int = Query(100, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    limit: int = Query(10, ge=1, le=100),
+    max_confirmation_age_bars: int = Query(4, ge=0, le=200),
+    min_volume_ratio: float = Query(1.5, ge=0, le=1000, allow_inf_nan=False),
+    min_quote_volume: float = Query(0, ge=0, allow_inf_nan=False),
+    include_conflicting: bool = Query(False),
+):
+    from app.services.bullish_candidates import candidates
+
+    try:
+        return candidates(
+            db,
+            now_ms(),
+            candidate_limit,
+            offset,
+            limit,
+            max_confirmation_age_bars,
+            min_volume_ratio,
+            min_quote_volume,
+            include_conflicting,
+        )
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=503, detail="Candidate database unavailable") from exc
+
+
 @app.get("/analysis/binance/similar")
 def similar_coins(
     db: DbDep,
