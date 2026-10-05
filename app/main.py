@@ -202,6 +202,36 @@ def formation_analysis(
     return result
 
 
+@app.get("/analysis/binance/backtest")
+def historical_signal_test(
+    db: DbDep,
+    symbol: str = Query(..., min_length=1, max_length=64, pattern=r"^[A-Za-z0-9]+$"),
+    history_limit: int = Query(500, ge=201, le=1000),
+    horizon_bars: int = Query(8, ge=1, le=96),
+    fee_bps: float = Query(10, ge=0, le=100, allow_inf_nan=False),
+    slippage_bps: float = Query(5, ge=0, le=100, allow_inf_nan=False),
+    min_volume_ratio: float = Query(1.5, ge=0, le=1000, allow_inf_nan=False),
+):
+    from app.services.signal_backtest import backtest
+
+    try:
+        result = backtest(
+            db,
+            symbol.upper(),
+            now_ms(),
+            history_limit,
+            horizon_bars,
+            fee_bps,
+            slippage_bps,
+            min_volume_ratio,
+        )
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=503, detail="Backtest database unavailable") from exc
+    if result is None:
+        raise HTTPException(status_code=404, detail="Active Binance Spot USDT symbol not found")
+    return result
+
+
 @app.get("/analysis/binance/dashboard", include_in_schema=False)
 def analysis_dashboard():
     from pathlib import Path

@@ -652,3 +652,25 @@ tekilleştirilir. Katalog alınamazsa coin elle girilebilir. Grafik ayrı
 panelde aynı coini açar; embed görünümünde coin değişimi ana ekrandan yapılır.
 Otomatik yenileme, emir gönderme veya veri tabanına yazma yoktur. Skorlar
 olasılık yüzdesi olarak gösterilmez.
+
+
+### İleri yürütmeli tek coin sinyal testi
+
+`GET /analysis/binance/backtest?symbol=BTCUSDT` kayıtlı son 500 kapanmış
+mumu kullanır. Her adımda yalnızca o adımda bilinen 200 mum analiz edilir.
+Varsayılan sekiz mum (iki saat) tutma süresi, her yönde 10 baz puan komisyon
+ve 5 baz puan kaymadır. Yeni yükseliş teyidi ancak `confirmed_at` o adımın
+kapanışıysa adaydır; hacim eşiği 1.5x, güncel karşıt teyit varsa dışlanır.
+Aynı kapanıştaki çoklu yapı tek sinyale indirilir. Giriş sonraki mum açılışı,
+çıkış N'inci mum kapanışıdır. Uygun ileri mumlar henüz yoksa sonuç beklemede
+sayılır. Boşluklu/geçersiz ileri mumlarla getiri hesaplanmaz. İlk analiz 200 mum
+kapandığında yapılır; daha önce oluşmuş teyitler test sinyali sayılmaz.
+`history_limit=201..1000`, `horizon_bars=1..96`, `fee_bps=0..100`,
+`slippage_bps=0..100`, `min_volume_ratio=0..1000` ayarlanabilir. Baz puan
+%0.01'dir. Net getiri: çıkış kapanışı*(1-kayma)*(1-komisyon) /
+[giriş açılışı*(1+kayma)*(1+komisyon)] - 1. En iyi/en kötü ara hareket
+ham fitiller üzerinden giriş açılışına göre ölçülür. Sinyaller çakışabilir;
+özet bağımsız sinyal getirileridir, portföy getirisi veya sermaye büyümesi
+değildir. Kayıtlı kısa pencere, güncel aktif semboller, sabit maliyet varsayımı
+ve küçük örneklem nedeniyle sonuç kalibre edilmiş gelecek olasılığı değildir.
+Endpoint salt okunurdur; eski veri çekmez, emir veya kayıt üretmez.
