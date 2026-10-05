@@ -744,3 +744,15 @@ The worker records observations only after this feature is enabled; backfill doe
 not generate historical forward signals. The current implementation settles when
 the symbol is successfully refreshed; an inactive/unavailable symbol may remain
 pending. These hypothetical per-signal statistics are not portfolio performance.
+
+
+### Forward outcome dashboard
+
+`GET /analysis/binance/forward/summary?days=7` reads observed outcomes for the
+current rule hash only. Optional `rule_hash` selects one historical fingerprint;
+`days` is bounded to 1–30. The response includes complete/pending/invalid counts
+for 1/2/4h, signal-weighted net-return statistics, and the latest 10 signals.
+Only finite, completed net returns enter statistics; empty means/rates are null.
+The dashboard has a manual refresh panel for all coins, independent of the
+selected chart coin. Periods may have different completed cohorts, so compare
+sample counts before comparing horizons. No migration or worker changes required.

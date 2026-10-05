@@ -419,3 +419,17 @@ def forward_signals(
         raise HTTPException(
             status_code=503, detail="Forward tracking database unavailable"
         ) from exc
+
+
+@app.get("/analysis/binance/forward/summary")
+def forward_summary(
+    db: DbDep,
+    days: int = Query(7, ge=1, le=30),
+    rule_hash: str | None = Query(None, pattern="^[0-9a-f]{64}$"),
+):
+    from app.services.forward_summary import summarize
+
+    try:
+        return summarize(db, now_ms(), days, rule_hash)
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=503, detail="Forward summary database unavailable") from exc
