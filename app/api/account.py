@@ -568,3 +568,22 @@ def get_candidate_scan(scan_id: UUID, request: Request, db: Db):
     if row is None:
         raise HTTPException(status_code=404, detail="Kayıtlı tarama bulunamadı.")
     return candidate_archive.detail(row)
+
+
+@router.delete("/candidate-scans/{scan_id}")
+def delete_candidate_scan(scan_id: UUID, request: Request, db: Db):
+    from app.db.models.candidate_scan import CandidateScan
+
+    owner = current(db, request, mutate=True).id
+    removed = db.execute(
+        delete(CandidateScan)
+        .where(
+            CandidateScan.id == str(scan_id),
+            CandidateScan.account_id == owner,
+        )
+        .returning(CandidateScan.id)
+    ).scalar_one_or_none()
+    if removed is None:
+        raise HTTPException(status_code=404, detail="Kayıtlı tarama bulunamadı.")
+    db.commit()
+    return dict(deleted=True, id=removed)

@@ -130,3 +130,27 @@ def test_collect_preserves_ranking_and_missing_higher_intervals(private_client, 
     assert candidate["evidence_score"] == 100
     assert candidate["horizons"][1]["status"] == "insufficient_data"
     assert data["ranking_scope"] == "saved_full_universe"
+
+
+def test_delete_requires_owner_csrf_and_only_removes_selected_scan(private_client, monkeypatch):
+    path = "/account/candidate-scans"
+    headers = auth(private_client)
+    monkeypatch.setattr(archive, "collect", lambda *args: payload())
+    first = private_client.post(path, json=dict(request_id=str(uuid4())), headers=headers).json()
+    second = private_client.post(path, json=dict(request_id=str(uuid4())), headers=headers).json()
+    target = path + "/" + first["id"]
+    assert private_client.delete(target).status_code == 403
+    bob = auth(private_client, "bob")
+    assert private_client.delete(target, headers=bob).status_code == 404
+    headers = auth(private_client)
+    assert private_client.get(target).status_code == 200
+    result = private_client.delete(target, headers=headers)
+    assert result.status_code == 200
+    assert result.json() == dict(deleted=True, id=first["id"])
+    assert private_client.get(target).status_code == 404
+    assert private_client.delete(target, headers=headers).status_code == 404
+    assert private_client.get(path + "/" + second["id"]).status_code == 200
+    events = private_client.get(path + "/history?symbol=BTCUSDT").json()["events"]
+    assert [row["scan_id"] for row in events] == [second["id"]]
+    assert private_client.post("/account/logout", headers=headers).status_code == 200
+    assert private_client.delete(path + "/" + second["id"], headers=headers).status_code == 401

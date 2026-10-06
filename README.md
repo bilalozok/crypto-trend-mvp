@@ -1009,3 +1009,10 @@ geçmişi son 100 taramayı inceler. Evren dışı ve veri eksikliği başarıs�
 olarak etiketlenmez. Başarı oranı veya sonradan oluşan fiyat sonuçları henüz
 hesaplanmaz. Mevcut herkese açık aday GET API değişmez. Deployment öncesinde
 `alembic upgrade head` gerekir (`f315c2026i01`).
+
+
+Kayıtlı aday taramasında Aç düğmesi yüklenme durumunu gösterir ve detay
+bölümüne kaydırır. Sil düğmesi onay sonrası yalnızca hesap sahibinin
+seçtiği taramayı kalıcı siler; o taramanın coin geçmişindeki gözlemi de
+kalkar. Yeni taramalar ve portföy kayıtları etkilenmez. DELETE isteği
+giriş ve CSRF gerektirir. Migration gerekmez.
