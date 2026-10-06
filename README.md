@@ -1032,3 +1032,16 @@ denenebilir. Sonuçlar bu taramanın aday grubuna aittir; taramalar arasında
 tekrarlanan adaylar bağımsız işlem veya portföy getirisi sayılmaz. Aynı
 adaylarla karşılaştırma tüm dört süre tamamlanan alt örneklemi kullanır.
 Tarama silindiğinde bağlı sonuçları silinir. Migration `0415c2026j01` gerekli.
+
+### Otomatik aday sonuç takibi
+
+Worker servisinde `CANDIDATE_OUTCOMES_ENABLED=true` ile etkinleştirilir;
+varsayılan kapalıdır. Her piyasa toplama turundan sonra en fazla 10 uygun
+tarama incelenir. Yoğun arşivlerde 15 dakikalık zaman dilimine göre dönen
+partiler kullanılır; sonuçların görünmesi birden fazla worker turu sürebilir.
+Yalnızca aktif hesapların yeni, en az 1 saatlik penceresi kapanmış ve
+bütün sonuçları henüz saklanmamış taramaları seçilir. Eksik/geçersiz mumlar
+sonraki turlarda yeniden denenir; worker geçmiş veri indirmez.
+Tamamlanan sonuçlar değişmez. Eski giriş zamanı olmayan taramalar dışlanır.
+Dashboard yenilemesi saklanan sonuçları gösterir; manuel hesaplama da kullanılabilir.
+Migration gerekmez; mevcut 0415c2026j01 şeması kullanılır.

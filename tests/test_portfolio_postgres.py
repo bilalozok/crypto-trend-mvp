@@ -129,7 +129,7 @@ def test_concurrent_candidate_scan_request_is_unique(sessions, monkeypatch):  # 
         assert db.query(CandidateScan).filter_by(account_id=owner).count() == 1
 
 
-def test_concurrent_candidate_outcomes_are_immutable(sessions):  # noqa: F811
+def test_concurrent_candidate_outcomes_are_immutable(sessions, monkeypatch):  # noqa: F811
     from app.db.models.binance_spot import BinanceSpotCandle
     from app.services import candidate_outcomes
     from app.services.formations import BAR
@@ -182,4 +182,12 @@ def test_concurrent_candidate_outcomes_are_immutable(sessions):  # noqa: F811
         results = list(pool.map(calculate, [1, 2]))
     assert results[0] == results[1]
     with sessions() as db:
+        assert db.query(CandidateOutcome).filter_by(scan_id=scan_id).count() == 1
+
+    # Exercise PostgreSQL JSON eligibility and idempotent worker settlement.
+    from app.services.candidate_auto import settle_due
+
+    monkeypatch.setenv("CANDIDATE_OUTCOMES_ENABLED", "true")
+    with sessions() as db:
+        assert settle_due(db, entry + 4 * BAR) == 1
         assert db.query(CandidateOutcome).filter_by(scan_id=scan_id).count() == 1

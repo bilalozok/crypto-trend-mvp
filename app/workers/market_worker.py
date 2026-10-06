@@ -124,6 +124,13 @@ def collect_market(budget=180, workers=4, limit=500):
                 successes += int(ok)
                 failures += int(not ok)
                 blocked = blocked or stop
+    try:
+        from app.services.candidate_auto import settle_due
+
+        with SessionLocal() as db:
+            settle_due(db, now_ms())
+    except Exception as exc:
+        logger.error("candidate_auto_failed error=%s", type(exc).__name__)
     logger.info(
         "binance_market_complete total=%s attempted=%s success=%s failed=%s deferred=%s",
         len(symbols),
