@@ -949,3 +949,18 @@ sınırlıdır. Kaynak blok/rate limit durumunda ek istekler durdurulur. Günlü
 özel gözlem düğmeyle saklanmaya devam eder; mevcut ilk günlük gözlem ve v1
 kayıtları değiştirilmez. Eski ve yeni portföy yöntemleri günlük yön
 karşılaştırmasında karıştırılmaz.
+
+
+### Portföyün koşullu yorumları
+
+Her vade kendi formasyonlarından olumlu/olumsuz kanıt, teyit hacmi eksikliği,
+eski teyit, oluşan ve geçersizleşen yapı açıklamaları üretir. Güncel veya
+oluşan yönlü yapılar için ilgili vade kapanışının teyit eşiği ve geometrik
+geçersizlik fiyatı gösterilir. Geçersizleşmiş/eski teyitler aktif koşul
+listesine alınmaz. Oluşan yapıların koşulu teyit adayıdır, kesin sinyal değildir.
+
+Yeni alım incelemesi ve eldeki coin için risk incelemesi ayrı açıklanır.
+Eksik/eski veri yorumlara katılmaz; adı açıkça belirtilir. Yorumlar olasılık,
+emir, otomatik stop veya kişisel mali duruma göre öneri üretmez.
+`portfolio_conditional_notes_v1` açıklama sürümüdür; geometrik motor ve
+`portfolio_multiframe_v2` değişmez. Kayıtlı günlük gözlemler tekrar hesaplanmaz.

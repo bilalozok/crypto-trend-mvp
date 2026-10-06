@@ -13,6 +13,7 @@ from app.db.models.binance_spot import BinanceSpotCandle, BinanceSpotSymbol
 from app.db.models.portfolio_observation import PortfolioObservation
 from app.services import formations, portfolio_timeframes
 from app.services.coin_report import build_report
+from app.services.portfolio_commentary import describe, reviews
 
 VERSION = "portfolio_multiframe_v2"
 LABELS = {
@@ -133,6 +134,7 @@ def technical(db, symbol, stamp):
             counts=result["counts"],
             patterns=result["patterns"],
             candles_required=200,
+            candles_used=result["candles_used"],
         )
     ]
     for name, interval in (("Orta", "4h"), ("Uzun", "1d")):
@@ -154,6 +156,9 @@ def technical(db, symbol, stamp):
                 candles_required=200,
             )
         )
+    for horizon in horizons:
+        horizon.update(describe(horizon))
+    result.update(reviews(horizons))
     result["horizons"] = horizons
     ready = [h for h in horizons if h["status"] == "ready"]
     up = any(h["assessment"] in ("bullish_setup", "conflicting") for h in ready)
