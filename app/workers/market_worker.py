@@ -85,6 +85,13 @@ def collect_market(budget=180, workers=4, limit=500):
                     )
                     if isinstance(exc, BinanceMarketError) and exc.status_code == 503:
                         return True, True
+            try:
+                from app.services.portfolio_auto import run_symbol
+
+                with SessionLocal() as db:
+                    run_symbol(db, symbol, now_ms())
+            except Exception as exc:
+                logger.error("portfolio_auto_failed symbol=%s error=%s", symbol, type(exc).__name__)
             return True, False
         except Exception as exc:
             with SessionLocal() as db:

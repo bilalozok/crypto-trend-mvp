@@ -384,6 +384,9 @@ def portfolio(request: Request, db: Db, offset: int = Query(0, ge=0)):
     for symbol in symbols[:10]:
         item = portfolio_technical.technical(db, symbol, stamp)
         previous = portfolio_technical.previous_day(db, account.id, symbol, stamp)
+        from app.services import portfolio_auto
+
+        item["automatic_observation"] = portfolio_auto.status(db, account.id, symbol, stamp, item)
         item["previous_observation"] = previous
         if previous is None:
             item["daily_change"] = "Önceki güne ait kayıt yok."

@@ -65,7 +65,7 @@ def output(row):
     )
 
 
-def save(db, owner, symbol, request_id, stamp):
+def save(db, owner, symbol, request_id, stamp, metadata=None):
     condition = (PortfolioSnapshot.account_id == owner, PortfolioSnapshot.request_id == request_id)
     existing = db.scalar(select(PortfolioSnapshot).where(*condition))
     if existing:
@@ -92,6 +92,7 @@ def save(db, owner, symbol, request_id, stamp):
         previous_at=timestamp(prior.observed_ms) if prior else None,
         notes=compare(prior.payload if prior else None, payload),
     )
+    comparison.update(metadata or {"source": "manual"})
     from uuid import uuid4
 
     insert = pg_insert if db.bind.dialect.name == "postgresql" else sqlite_insert

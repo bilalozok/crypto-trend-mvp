@@ -976,3 +976,18 @@ sürümleri yön değişimi olarak karşılaştırılmaz. Kayıtlar manueldir; e
 Deployment öncesinde `alembic upgrade head` gerekir (`e215c2026h01`).
 `/account/portfolio/snapshots` GET/POST giriş ve kayıt sahipliği gerektirir; POST
 için CSRF ve UUID `request_id` gerekir. Aynı isteğin tekrarı kaydı çoğaltmaz.
+
+
+### Otomatik günlük portföy gözlemi (Türkiye 09:00)
+
+Railway web ve candle-worker servislerinde `PORTFOLIO_DAILY_ENABLED=true`
+ayarlanarak açılır; varsayılan kapalıdır. Mevcut worker Cron sıklığı korunur.
+Aktif hesapların alış kaydı olan coinleri, 09:00 sonrasındaki başarılı veri
+toplama çalışmasında bir kez kaydedilir. Gerçek gözlem zamanı ve planlanan
+09:00 zamanı ayrıdır; kapanış verisi kullanılır, 09:00 fiyatı simüle edilmez.
+Kısa vade verisi hazır değilse kayıt alınmaz ve aynı gün sonraki çalışmada
+yeniden denenir. Eksik orta/uzun vadeler açıkça belirtilir; geçmiş günler
+doldurulmaz. Yeni alışlar gün içinde sonraki çalışmada kapsama girer.
+Günlük ilk manuel gözlem değiştirilmez. Otomatik gözlemler saatli kayıtlarda
+ayrı kaynak etiketiyle görünür. Migration gerekmez; mevcut snapshot tablosu
+ve hesap/istek benzersizliği kullanılır. Bayrağı false yaparak durdurulur.
