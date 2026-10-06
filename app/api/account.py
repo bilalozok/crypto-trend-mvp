@@ -462,3 +462,39 @@ def refresh_portfolio_timeframes(data: PortfolioObservationInput, request: Reque
             detail="Orta/uzun vade verisi alınamadı; daha sonra yeniden dene.",
         ) from exc
     return dict(symbol=symbol, feeds=result)
+
+
+class PortfolioSnapshotInput(PortfolioObservationInput):
+    request_id: UUID
+
+
+@router.post("/portfolio/snapshots")
+def save_portfolio_snapshot(data: PortfolioSnapshotInput, request: Request, db: Db):
+    from app.services import portfolio_snapshots
+
+    account = current(db, request, mutate=True)
+    symbol = data.symbol.upper()
+    require_owned_symbol(db, account.id, symbol)
+    return portfolio_snapshots.save(db, account.id, symbol, str(data.request_id), now_ms())
+
+
+@router.get("/portfolio/snapshots")
+def portfolio_snapshot_history(
+    request: Request, db: Db, symbol: str = Query(pattern=r"^[A-Za-z0-9]{1,64}$")
+):
+    from app.db.models.portfolio_snapshot import PortfolioSnapshot
+    from app.services import portfolio_snapshots
+
+    account = current(db, request)
+    symbol = symbol.upper()
+    require_owned_symbol(db, account.id, symbol)
+    rows = db.scalars(
+        select(PortfolioSnapshot)
+        .where(
+            PortfolioSnapshot.account_id == account.id,
+            PortfolioSnapshot.symbol == symbol,
+        )
+        .order_by(PortfolioSnapshot.observed_ms.desc(), PortfolioSnapshot.id.desc())
+        .limit(30)
+    ).all()
+    return dict(symbol=symbol, snapshots=[portfolio_snapshots.output(row) for row in rows])

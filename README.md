@@ -964,3 +964,15 @@ Eksik/eski veri yorumlara katılmaz; adı açıkça belirtilir. Yorumlar olasıl
 emir, otomatik stop veya kişisel mali duruma göre öneri üretmez.
 `portfolio_conditional_notes_v1` açıklama sürümüdür; geometrik motor ve
 `portfolio_multiframe_v2` değişmez. Kayıtlı günlük gözlemler tekrar hesaplanmaz.
+
+
+### Portföy saatli gözlemleri
+
+Coin detayındaki güncel gözlem düğmesi, kapanmış mumlarla hesaplanan teknik
+görünümü yeni saatli kayıt olarak saklar. Günlük ilk gözlemler değiştirilmez.
+Son 30 saatli kayıt ve kayıttan önceki son günlük/saatli gözleme göre teyit,
+hacim ve fiyat koşulu değişimleri gösterilir. Eksik veri ve farklı analiz
+sürümleri yön değişimi olarak karşılaştırılmaz. Kayıtlar manueldir; emir üretilmez.
+Deployment öncesinde `alembic upgrade head` gerekir (`e215c2026h01`).
+`/account/portfolio/snapshots` GET/POST giriş ve kayıt sahipliği gerektirir; POST
+için CSRF ve UUID `request_id` gerekir. Aynı isteğin tekrarı kaydı çoğaltmaz.

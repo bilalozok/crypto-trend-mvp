@@ -6,6 +6,7 @@ import pytest
 
 from app.db.models.account import Account
 from app.db.models.portfolio_observation import PortfolioObservation
+from app.db.models.portfolio_snapshot import PortfolioSnapshot
 from app.services import portfolio_technical as technical
 from tests.test_formation_history_postgres import sessions  # noqa: F401
 
@@ -64,3 +65,31 @@ def test_concurrent_feed_reservation_fetches_once(sessions, monkeypatch):  # noq
         result = list(pool.map(write, [1, 2]))
     assert result.count("updated") == 1
     assert len(calls) == 1
+
+
+def test_concurrent_snapshot_request_is_unique(sessions, monkeypatch):  # noqa: F811
+    from app.services import portfolio_snapshots
+
+    owner, request_id = str(uuid4()), str(uuid4())
+    with sessions() as db:
+        db.add(
+            Account(
+                id=owner, username="snapshot-test", password_hash="test", active=True, created_ms=0
+            )
+        )
+        db.commit()
+    monkeypatch.setattr(
+        technical, "technical", lambda *args: dict(status="ready", version=technical.VERSION)
+    )
+
+    def write(_):
+        with sessions() as db:
+            return portfolio_snapshots.save(db, owner, "BTCUSDT", request_id, 1791226800000)[
+                "created"
+            ]
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(write, [1, 2]))
+    assert sum(results) == 1
+    with sessions() as db:
+        assert db.query(PortfolioSnapshot).filter_by(account_id=owner).count() == 1

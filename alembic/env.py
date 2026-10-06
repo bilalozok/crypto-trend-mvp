@@ -5,6 +5,7 @@ from pathlib import Path
 
 from sqlalchemy import engine_from_config, pool
 
+import app.db.models.portfolio_snapshot  # noqa: F401
 from alembic import context
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
