@@ -12,7 +12,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.db.models.account import AccountSession, Purchase
 from app.db.models.binance_spot import BinanceSpotSymbol
 from app.db.session import SessionLocal
-from app.services import account_auth, purchase_analysis
+from app.services import account_auth, portfolio_technical, purchase_analysis
 from app.services.binance_collection import now_ms
 from app.services.formations import timestamp
 
@@ -349,3 +349,89 @@ def remove_purchase(purchase_id: UUID, request: Request, db: Db):
     db.delete(row)
     db.commit()
     return dict(deleted=True)
+
+
+class PortfolioObservationInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    symbol: str = Field(pattern=r"^[A-Za-z0-9]{1,64}$")
+
+
+def require_owned_symbol(db, account_id, symbol):
+    if (
+        db.scalar(
+            select(Purchase.id)
+            .where(Purchase.account_id == account_id, Purchase.symbol == symbol)
+            .limit(1)
+        )
+        is None
+    ):
+        raise HTTPException(status_code=404, detail="Bu coin için özel alış kaydı bulunamadı.")
+
+
+@router.get("/portfolio")
+def portfolio(request: Request, db: Db, offset: int = Query(0, ge=0)):
+    account = current(db, request)
+    stamp = now_ms()
+    symbols = db.scalars(
+        select(Purchase.symbol)
+        .where(Purchase.account_id == account.id)
+        .distinct()
+        .order_by(Purchase.symbol)
+        .offset(offset)
+        .limit(11)
+    ).all()
+    result = []
+    for symbol in symbols[:10]:
+        item = portfolio_technical.technical(db, symbol, stamp)
+        previous = portfolio_technical.previous_day(db, account.id, symbol, stamp)
+        item["previous_observation"] = previous
+        if previous is None:
+            item["daily_change"] = "Önceki güne ait kayıt yok."
+        elif previous["method"] != portfolio_technical.VERSION or item["status"] != "ready":
+            item["daily_change"] = "Kural/veri farklı; günlük yön karşılaştırması yapılmadı."
+        elif previous["technical"]["assessment"] == item["assessment"]:
+            item["daily_change"] = (
+                "Son kayıtlı güne göre yön değerlendirmesi aynı; seviyeler değişebilir."
+            )
+        else:
+            item["daily_change"] = previous["technical"]["label"] + " → " + item["label"]
+        result.append(item)
+    return dict(
+        version=portfolio_technical.VERSION,
+        as_of=timestamp(stamp),
+        coins=result,
+        next_offset=offset + 10 if len(symbols) > 10 else None,
+    )
+
+
+@router.post("/portfolio/observations")
+def save_portfolio_observation(data: PortfolioObservationInput, request: Request, db: Db):
+    account = current(db, request, mutate=True)
+    symbol = data.symbol.upper()
+    require_owned_symbol(db, account.id, symbol)
+    return portfolio_technical.save_daily(db, account.id, symbol, now_ms())
+
+
+@router.get("/portfolio/history")
+def portfolio_history(
+    request: Request, db: Db, symbol: str = Query(pattern=r"^[A-Za-z0-9]{1,64}$")
+):
+    from app.db.models.portfolio_observation import PortfolioObservation
+
+    account = current(db, request)
+    symbol = symbol.upper()
+    require_owned_symbol(db, account.id, symbol)
+    rows = db.scalars(
+        select(PortfolioObservation)
+        .where(PortfolioObservation.account_id == account.id, PortfolioObservation.symbol == symbol)
+        .order_by(PortfolioObservation.local_day.desc())
+        .limit(30)
+    ).all()
+    return dict(
+        symbol=symbol,
+        observations=[portfolio_technical.observation_out(row) for row in rows],
+        note=(
+            "Türkiye takvim gününde ilk kullanıcı gözlemi saklanır; otomatik "
+            "günlük kayıt veya geçmişe dönük üretim yapılmaz."
+        ),
+    )

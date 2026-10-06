@@ -29,6 +29,7 @@ import app.db.models.feature  # noqa: F401,E402
 import app.db.models.formation_history  # noqa: F401,E402
 import app.db.models.forward_report  # noqa: F401,E402
 import app.db.models.forward_signal  # noqa: F401,E402
+import app.db.models.portfolio_observation  # noqa: F401,E402
 import app.db.models.signal  # noqa: F401,E402
 import app.db.models.symbol  # noqa: F401,E402
 import app.db.models.watchlist  # noqa: F401,E402

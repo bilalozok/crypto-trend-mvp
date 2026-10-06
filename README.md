@@ -860,7 +860,9 @@ TL için aynı kapanışa ait **BtcTurk USDT/TRY** kline fiyatı kullanılır.
 Kaynak: https://docs.btcturk.com/docs/public-endpoints/get-kline-data/;
 `graph-api.btcturk.com/v1/klines/history`, `symbol=USDTTRY`, `resolution=15`.
 `from`/`to` saniyedir; dönen `t` açılış zamanı istenen 15m mumla birebir
-örtüşmelidir. OHLC pozitif/sonlu/tutarlı olmalı; tüm diziler tek mum içermelidir.
+örtüşmelidir. OHLC pozitif/sonlu/tutarlı olmalı; diziler eşit uzunlukta olmalıdır. Açılış zamanı tam eşleşen tek mum seçilir;
+yanıtta gelen sonraki mum değerlemeye dahil edilmez. Eksik veya tekrarlanan
+eşleşme reddedilir.
 Coin fiyatı Binance Spot, kur ayrı BtcTurk piyasasıdır; kaynak ekranda gösterilir.
 Binance TR bağlantısı Railway'de HTTP 451 döndüğü için bağımsız veri sağlayıcısı
 kullanılır. Başarısız sorgu, eksik güncel coin fiyatı, pasif parite veya son
@@ -889,3 +891,24 @@ zamanıdır. Kişisel tutarlar/notlar giriş gerektirir ve yanıtlar no-store ka
 Sayı girişleri `1234,56`, `1234.56` veya Türkçe `1.234,56` kabul eder. Para
 simgeleri ve belirsiz karma biçimler reddedilir; doğrulama hataları alan adıyla
 gösterilir. Yeni migration, hesap veya worker ayarı gerekmez.
+
+
+## Özel portföy teknik takip
+
+`Portföy teknik takip` sekmesi giriş gerektirir. `GET /account/portfolio`
+yalnızca hesabın alış kaydı olan benzersiz coinlerini, sayfa başına 10 adet
+inceler. Satış kayıtları yoktur; liste eldeki net miktarı doğrulamaz. TL kuru
+ve alış maliyeti bu akışta kullanılmaz. Kapanmış 200 adet 15m mumdan mevcut
+formasyon motoru ile olumlu/olumsuz kanıtlar, hacim desteği, kırılım ve
+geçersizlik seviyeleri sunulur. Orta (4h) ve uzun (1d) vade henüz desteklenmez;
+15m sonucu diğer vadeler için kullanılmaz. Olasılık veya otomatik emir üretilmez.
+
+Migration: `alembic upgrade head` (`c015c2026f01`).
+`POST /account/portfolio/observations` CSRF ile bir sahip olunan coin için
+Türkiye takvim günündeki ilk geçerli kullanıcı gözlemini saklar. Aynı gün
+tekrar kayıt isteği eski gözlemi değiştirmez; eşzamanlı istekler tek kayıt
+oluşturur. Eksik/eski veri kaydedilmez. Otomatik worker kaydı ve geçmişe dönük
+doldurma yoktur. `GET /account/portfolio/history?symbol=BTCUSDT` son 30 kaydı
+hesaba özel getirir. Günlük yön karşılaştırması önceki kayıtlı günle yapılır;
+aynı yön fiyat seviyelerinin aynı kaldığı anlamına gelmez. Tüm hesap yanıtları
+no-store'dur; çıkışta ve oturum bitişinde özel portföy görünümü temizlenir.
