@@ -501,3 +501,70 @@ def portfolio_snapshot_history(
         .limit(30)
     ).all()
     return dict(symbol=symbol, snapshots=[portfolio_snapshots.output(row) for row in rows])
+
+
+class CandidateScanInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    request_id: UUID
+
+
+@router.post("/candidate-scans", status_code=201)
+def create_candidate_scan(data: CandidateScanInput, request: Request, db: Db):
+    from app.services import candidate_archive
+
+    owner = current(db, request, mutate=True).id
+    try:
+        with SessionLocal() as scan_db:
+            if scan_db.bind.dialect.name == "postgresql":
+                scan_db.connection(execution_options={"isolation_level": "REPEATABLE READ"})
+            return candidate_archive.create(scan_db, owner, str(data.request_id), now_ms())
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except SQLAlchemyError as exc:
+        raise HTTPException(
+            status_code=503, detail="Tarama kaydedilemedi; aynı isteği yeniden deneyebilirsin."
+        ) from exc
+
+
+@router.get("/candidate-scans")
+def list_candidate_scans(request: Request, db: Db, offset: int = Query(0, ge=0)):
+    from app.db.models.candidate_scan import CandidateScan
+    from app.services import candidate_archive
+
+    owner = current(db, request).id
+    rows = db.scalars(
+        select(CandidateScan)
+        .where(CandidateScan.account_id == owner)
+        .order_by(CandidateScan.created_ms.desc(), CandidateScan.id.desc())
+        .offset(offset)
+        .limit(21)
+    ).all()
+    return dict(
+        scans=[candidate_archive.summary(row) for row in rows[:20]],
+        next_offset=offset + 20 if len(rows) > 20 else None,
+    )
+
+
+@router.get("/candidate-scans/history")
+def candidate_symbol_history(
+    request: Request, db: Db, symbol: str = Query(pattern=r"^[A-Za-z0-9]{1,64}$")
+):
+    from app.services import candidate_archive
+
+    return candidate_archive.history(db, current(db, request).id, symbol.upper())
+
+
+@router.get("/candidate-scans/{scan_id}")
+def get_candidate_scan(scan_id: UUID, request: Request, db: Db):
+    from app.db.models.candidate_scan import CandidateScan
+    from app.services import candidate_archive
+
+    owner = current(db, request).id
+    row = db.scalar(
+        select(CandidateScan).where(
+            CandidateScan.id == str(scan_id), CandidateScan.account_id == owner
+        )
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="Kayıtlı tarama bulunamadı.")
+    return candidate_archive.detail(row)

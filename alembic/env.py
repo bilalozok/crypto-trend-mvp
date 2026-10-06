@@ -5,6 +5,7 @@ from pathlib import Path
 
 from sqlalchemy import engine_from_config, pool
 
+import app.db.models.candidate_scan  # noqa: F401
 import app.db.models.portfolio_snapshot  # noqa: F401
 from alembic import context
 

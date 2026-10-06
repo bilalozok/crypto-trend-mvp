@@ -991,3 +991,21 @@ doldurulmaz. Yeni alışlar gün içinde sonraki çalışmada kapsama girer.
 Günlük ilk manuel gözlem değiştirilmez. Otomatik gözlemler saatli kayıtlarda
 ayrı kaynak etiketiyle görünür. Migration gerekmez; mevcut snapshot tablosu
 ve hesap/istek benzersizliği kullanılır. Bayrağı false yaparak durdurulur.
+
+
+### Kayıtlı aday taramaları
+
+Adaylar sekmesindeki Piyasayı tara ve kaydet işlemi giriş/CSRF gerektirir.
+Aktif stablecoin olmayan USDT evreni tek sunucu isteğinde taranır; en fazla
+1000 coin desteklenir, sınır aşılırsa kısmi kayıt oluşturulmaz. PostgreSQL
+REPEATABLE READ ile evren ve mum verisi aynı veritabanı görünümünden okunur.
+Kapanmış 15m verisindeki mevcut yükseliş aday koşulu ve puanı korunur.
+Tüm taranan coinlerin veri durumu ve dışlanma nedeni, tüm uygun adaylar ve
+adayların ayrı 15m/4h/1d teknik görünümleri değişmez JSON olarak saklanır.
+4h/1d için yalnızca mevcut depolanmış veri kullanılır; tarama dış API çağırmaz.
+Eksik vade yön kanıtı sayılmaz. Yüksek vadeler bu aşamada puana dahil değildir.
+Kayıtlı taramalar yalnızca hesap sahibine açıktır. Liste 20 kayıt/sayfadır; coin
+geçmişi son 100 taramayı inceler. Evren dışı ve veri eksikliği başarısızlık
+olarak etiketlenmez. Başarı oranı veya sonradan oluşan fiyat sonuçları henüz
+hesaplanmaz. Mevcut herkese açık aday GET API değişmez. Deployment öncesinde
+`alembic upgrade head` gerekir (`f315c2026i01`).

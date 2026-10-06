@@ -5,6 +5,7 @@ from uuid import uuid4
 import pytest
 
 from app.db.models.account import Account
+from app.db.models.candidate_scan import CandidateScan
 from app.db.models.portfolio_observation import PortfolioObservation
 from app.db.models.portfolio_snapshot import PortfolioSnapshot
 from app.services import portfolio_technical as technical
@@ -93,3 +94,35 @@ def test_concurrent_snapshot_request_is_unique(sessions, monkeypatch):  # noqa: 
     assert sum(results) == 1
     with sessions() as db:
         assert db.query(PortfolioSnapshot).filter_by(account_id=owner).count() == 1
+
+
+def test_concurrent_candidate_scan_request_is_unique(sessions, monkeypatch):  # noqa: F811
+    from app.services import candidate_archive
+
+    owner, request_id = str(uuid4()), str(uuid4())
+    with sessions() as db:
+        db.add(
+            Account(
+                id=owner,
+                username="candidate-scan-test",
+                password_hash="test",
+                active=True,
+                created_ms=0,
+            )
+        )
+        db.commit()
+    monkeypatch.setattr(
+        candidate_archive,
+        "collect",
+        lambda *args: dict(universe=[], candidates=[], quality_counts={}),
+    )
+
+    def write(_):
+        with sessions() as db:
+            return candidate_archive.create(db, owner, request_id, 1791226800000)["id"]
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        ids = list(pool.map(write, [1, 2]))
+    assert ids[0] == ids[1]
+    with sessions() as db:
+        assert db.query(CandidateScan).filter_by(account_id=owner).count() == 1
