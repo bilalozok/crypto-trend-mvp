@@ -3,7 +3,7 @@
 import logging
 import os
 
-from sqlalchemy import func, select
+from sqlalchemy import BigInteger, cast, func, select
 
 from app.db.models.account import Account
 from app.db.models.candidate_outcome import CandidateOutcome
@@ -18,7 +18,7 @@ BATCH = 10
 def settle_due(db, stamp):
     if os.getenv("CANDIDATE_OUTCOMES_ENABLED", "false").lower() != "true":
         return 0
-    entry = CandidateScan.payload["evaluation_entry_ms"].as_integer()
+    entry = cast(CandidateScan.payload["evaluation_entry_ms"].as_string(), BigInteger)
     length = func.json_array_length(CandidateScan.payload["candidates"])
     completed = (
         select(func.count())
