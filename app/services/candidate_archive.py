@@ -173,6 +173,15 @@ def create(db, owner, request_id, stamp):
     if existing:
         return detail(existing)
     payload = collect(db, stamp)
+    from app.services.binance_collection import now_ms
+
+    completed = max(stamp, now_ms())
+    payload["calculation_completed_at"] = formations.timestamp(completed).isoformat()
+    payload["evaluation_entry_ms"] = (completed // formations.BAR + 2) * formations.BAR
+    payload["evaluation_note"] = (
+        "Varsayımsal giriş: hesaplama bitiminden sonra en az 15 dakika tamponlu "
+        "ilk 15m mum açılışı. Tarama veri zamanı ve giriş zamanı farklıdır."
+    )
     insert = pg_insert if db.bind.dialect.name == "postgresql" else sqlite_insert
     db.execute(
         insert(CandidateScan)
@@ -180,7 +189,7 @@ def create(db, owner, request_id, stamp):
             id=str(uuid4()),
             account_id=owner,
             request_id=request_id,
-            created_ms=stamp,
+            created_ms=completed,
             rule_hash=archive_hash(),
             payload=payload,
         )

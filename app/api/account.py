@@ -575,6 +575,17 @@ def delete_candidate_scan(scan_id: UUID, request: Request, db: Db):
     from app.db.models.candidate_scan import CandidateScan
 
     owner = current(db, request, mutate=True).id
+    from app.db.models.candidate_outcome import CandidateOutcome
+
+    owned = db.scalar(
+        select(CandidateScan.id).where(
+            CandidateScan.id == str(scan_id),
+            CandidateScan.account_id == owner,
+        )
+    )
+    if owned is None:
+        raise HTTPException(status_code=404, detail="Kayıtlı tarama bulunamadı.")
+    db.execute(delete(CandidateOutcome).where(CandidateOutcome.scan_id == owned))
     removed = db.execute(
         delete(CandidateScan)
         .where(
@@ -587,3 +598,33 @@ def delete_candidate_scan(scan_id: UUID, request: Request, db: Db):
         raise HTTPException(status_code=404, detail="Kayıtlı tarama bulunamadı.")
     db.commit()
     return dict(deleted=True, id=removed)
+
+
+def require_candidate_scan(db, owner, scan_id):
+    from app.db.models.candidate_scan import CandidateScan
+
+    row = db.scalar(
+        select(CandidateScan).where(
+            CandidateScan.id == str(scan_id),
+            CandidateScan.account_id == owner,
+        )
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="Kayıtlı tarama bulunamadı.")
+    return row
+
+
+@router.get("/candidate-scans/{scan_id}/outcomes")
+def get_candidate_outcomes(scan_id: UUID, request: Request, db: Db):
+    from app.services import candidate_outcomes
+
+    row = require_candidate_scan(db, current(db, request).id, scan_id)
+    return candidate_outcomes.results(db, row, now_ms())
+
+
+@router.post("/candidate-scans/{scan_id}/outcomes")
+def update_candidate_outcomes(scan_id: UUID, request: Request, db: Db):
+    from app.services import candidate_outcomes
+
+    row = require_candidate_scan(db, current(db, request, mutate=True).id, scan_id)
+    return candidate_outcomes.results(db, row, now_ms(), persist=True)

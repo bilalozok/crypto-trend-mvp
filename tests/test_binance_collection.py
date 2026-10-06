@@ -183,5 +183,5 @@ def test_migration_upgrade_preserves_legacy_candles(tmp_path, monkeypatch):
     with engine.connect() as connection:
         assert connection.exec_driver_sql("SELECT count(*) FROM candles").scalar() == 1
         version = connection.exec_driver_sql("SELECT version_num FROM alembic_version").scalar()
-        assert version == "f315c2026i01"
+        assert version == "0415c2026j01"
     engine.dispose()

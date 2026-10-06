@@ -5,6 +5,7 @@ from uuid import uuid4
 import pytest
 
 from app.db.models.account import Account
+from app.db.models.candidate_outcome import CandidateOutcome
 from app.db.models.candidate_scan import CandidateScan
 from app.db.models.portfolio_observation import PortfolioObservation
 from app.db.models.portfolio_snapshot import PortfolioSnapshot
@@ -126,3 +127,59 @@ def test_concurrent_candidate_scan_request_is_unique(sessions, monkeypatch):  # 
     assert ids[0] == ids[1]
     with sessions() as db:
         assert db.query(CandidateScan).filter_by(account_id=owner).count() == 1
+
+
+def test_concurrent_candidate_outcomes_are_immutable(sessions):  # noqa: F811
+    from app.db.models.binance_spot import BinanceSpotCandle
+    from app.services import candidate_outcomes
+    from app.services.formations import BAR
+
+    owner, scan_id = str(uuid4()), str(uuid4())
+    entry = 1791226800000 // BAR * BAR
+    with sessions() as db:
+        db.add(
+            Account(
+                id=owner, username="outcome-test", password_hash="test", active=True, created_ms=0
+            )
+        )
+        db.flush()
+        db.add(
+            CandidateScan(
+                id=scan_id,
+                account_id=owner,
+                request_id=str(uuid4()),
+                created_ms=entry - BAR,
+                rule_hash="test",
+                payload=dict(
+                    evaluation_entry_ms=entry,
+                    candidates=[
+                        dict(symbol="BTCUSDT", primary_pattern=dict(name="Test"), evidence_score=80)
+                    ],
+                ),
+            )
+        )
+        for i in range(4):
+            db.add(
+                BinanceSpotCandle(
+                    symbol="BTCUSDT",
+                    interval="15m",
+                    open_time=entry + i * BAR,
+                    open=100,
+                    high=103,
+                    low=99,
+                    close=102,
+                    volume=1,
+                )
+            )
+        db.commit()
+
+    def calculate(_):
+        with sessions() as db:
+            scan = db.get(CandidateScan, scan_id)
+            return candidate_outcomes.results(db, scan, entry + 4 * BAR, persist=True)["candidates"]
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(calculate, [1, 2]))
+    assert results[0] == results[1]
+    with sessions() as db:
+        assert db.query(CandidateOutcome).filter_by(scan_id=scan_id).count() == 1

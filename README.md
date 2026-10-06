@@ -1016,3 +1016,19 @@ bölümüne kaydırır. Sil düğmesi onay sonrası yalnızca hesap sahibinin
 seçtiği taramayı kalıcı siler; o taramanın coin geçmişindeki gözlemi de
 kalkar. Yeni taramalar ve portföy kayıtları etkilenmez. DELETE isteği
 giriş ve CSRF gerektirir. Migration gerekmez.
+
+
+### Kayıtlı aday sonuçları
+
+Yeni taramaların hesaplama tamamlanma zamanı kaydedilir. Varsayımsal giriş
+bu zamandan en az 15 dakika sonraki ilk 15m mum açılışıdır (15–30 dakika
+tampon); 09:00 portföy programından bağımsızdır. Önceden kaydedilmiş ve
+tamamlanma zamanı olmayan taramalar ileriye dönük teste alınmaz.
+1/2/4/24 saatlik tam, ardışık ve kapanmış 15m mumlar kullanılır. Her yönde
+10 bps komisyon ve 5 bps kayma uygulanır. GET salt okunurdur; Sonuçları
+hesapla düğmesinin CSRF korumalı POST isteği tamamlanan sonuçları değişmez
+olarak saklar. Bekleyen/eksik veriler ortalamalara katılmaz ve yeniden
+denenebilir. Sonuçlar bu taramanın aday grubuna aittir; taramalar arasında
+tekrarlanan adaylar bağımsız işlem veya portföy getirisi sayılmaz. Aynı
+adaylarla karşılaştırma tüm dört süre tamamlanan alt örneklemi kullanır.
+Tarama silindiğinde bağlı sonuçları silinir. Migration `0415c2026j01` gerekli.
