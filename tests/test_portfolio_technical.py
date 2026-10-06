@@ -181,3 +181,29 @@ def test_evidence_and_condition_explanations(monkeypatch):
     assert "yükseliş" in result["positive_notes"][0]
     assert "hacmi" in result["negative_notes"][0]
     assert "geçersizlik" in result["guidance"]
+
+
+def test_insert_receipt_does_not_depend_on_driver_rowcount(private_client, monkeypatch):
+    headers = auth(private_client)
+    buy(private_client, headers)
+    monkeypatch.setattr(technical, "technical", lambda *args: dict(status="ready"))
+    with SessionLocal() as db:
+        owner = db.query(Account).filter_by(username="alice").first().id
+        execute = db.execute
+
+        def unknown_rowcount(statement, *args, **kwargs):
+            result = execute(statement, *args, **kwargs)
+            if (
+                getattr(statement, "is_insert", False)
+                and statement.table.name == "private_portfolio_observations"
+            ):
+                return SimpleNamespace(rowcount=-1, scalar_one_or_none=result.scalar_one_or_none)
+            return result
+
+        monkeypatch.setattr(db, "execute", unknown_rowcount)
+        first = technical.save_daily(db, owner, "BTCUSDT", STAMP)
+        second = technical.save_daily(db, owner, "BTCUSDT", STAMP + 1)
+        assert first["created"] is True
+        assert second["created"] is False
+        assert first["observation"] == second["observation"]
+        assert db.query(PortfolioObservation).count() == 1

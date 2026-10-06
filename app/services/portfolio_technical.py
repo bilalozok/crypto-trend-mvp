@@ -200,7 +200,7 @@ def save_daily(db, account_id, symbol, stamp):
     if payload["status"] != "ready":
         return dict(created=False, reason="not_ready", current=payload)
     insert = pg_insert if db.bind.dialect.name == "postgresql" else sqlite_insert
-    result = db.execute(
+    inserted_id = db.execute(
         insert(PortfolioObservation)
         .values(
             id=str(uuid4()),
@@ -212,10 +212,11 @@ def save_daily(db, account_id, symbol, stamp):
             payload=payload,
         )
         .on_conflict_do_nothing(index_elements=["account_id", "symbol", "local_day"])
-    )
+        .returning(PortfolioObservation.id)
+    ).scalar_one_or_none()
     db.commit()
     row = db.scalar(select(PortfolioObservation).where(*condition))
-    return dict(created=result.rowcount == 1, observation=observation_out(row))
+    return dict(created=inserted_id is not None, observation=observation_out(row))
 
 
 def observation_out(row):
