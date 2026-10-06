@@ -11,10 +11,10 @@ from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
 from app.db.models.binance_spot import BinanceSpotCandle, BinanceSpotSymbol
 from app.db.models.portfolio_observation import PortfolioObservation
-from app.services import formations
+from app.services import formations, portfolio_timeframes
 from app.services.coin_report import build_report
 
-VERSION = "portfolio_technical_15m_v1"
+VERSION = "portfolio_multiframe_v2"
 LABELS = {
     "bullish_setup": "Yükseliş teyidi",
     "bearish_setup": "Düşüş baskısı",
@@ -29,7 +29,7 @@ def json_ready(value):
     return json.loads(json.dumps(value, default=lambda item: item.isoformat()))
 
 
-def technical(db, symbol, stamp):
+def short_technical(db, symbol, stamp):
     known = db.get(BinanceSpotSymbol, symbol)
     rows = list(
         reversed(
@@ -66,7 +66,7 @@ def technical(db, symbol, stamp):
         "bullish_setup": (
             "Yeni alımı değerlendirirken teyit hacmini ve kırılımın "
             "korunmasını kontrol et. Eldeki coin için geçersizlik seviyesini "
-            "izle; diğer vadeler henüz değerlendirilmedi."
+            "izle; diğer vadelerin durumunu da kontrol et."
         ),
         "bearish_setup": (
             "Eldeki coin için risk planını ve geçersizlik/kırılım seviyelerini "
@@ -95,6 +95,7 @@ def technical(db, symbol, stamp):
             version=VERSION,
             as_of=formations.timestamp(stamp),
             status=analysis["status"],
+            candles_used=len(rows),
             assessment=assessment,
             label=LABELS[assessment],
             candle_close_time=(
@@ -111,29 +112,78 @@ def technical(db, symbol, stamp):
             guidance=guidance,
             patterns=report["patterns"],
             counts=report["counts"],
-            horizons=[
-                dict(
-                    name="Kısa", interval="15m", status=analysis["status"], label=LABELS[assessment]
-                ),
-                dict(
-                    name="Orta",
-                    interval="4h",
-                    status="not_supported",
-                    label="4 saatlik motor ve geçmiş henüz hazır değil",
-                ),
-                dict(
-                    name="Uzun",
-                    interval="1d",
-                    status="not_supported",
-                    label="Günlük motor ve geçmiş henüz hazır değil",
-                ),
-            ],
             note=(
                 "Alış kaydı olan coinlerin teknik görünümüdür; satışlar düşülmez. "
                 "Başarı olasılığı veya otomatik emir değildir."
             ),
         )
     )
+
+
+def technical(db, symbol, stamp):
+    result = short_technical(db, symbol, stamp)
+    horizons = [
+        dict(
+            name="Kısa",
+            interval="15m",
+            status=result["status"],
+            label=result["label"],
+            assessment=result["assessment"],
+            candle_close_time=result["candle_close_time"],
+            counts=result["counts"],
+            patterns=result["patterns"],
+            candles_required=200,
+        )
+    ]
+    for name, interval in (("Orta", "4h"), ("Uzun", "1d")):
+        analysis = portfolio_timeframes.analyze(db, symbol, stamp, interval)
+        if result["status"] == "inactive_symbol":
+            analysis.update(status="inactive_symbol", patterns=[])
+        report = build_report(analysis)
+        horizons.append(
+            dict(
+                name=name,
+                interval=interval,
+                status=analysis["status"],
+                label=LABELS[report["assessment"]],
+                assessment=report["assessment"],
+                candle_close_time=analysis["candle_close_time"],
+                counts=report["counts"],
+                patterns=report["patterns"],
+                candles_used=analysis["candles_used"],
+                candles_required=200,
+            )
+        )
+    result["horizons"] = horizons
+    ready = [h for h in horizons if h["status"] == "ready"]
+    up = any(h["assessment"] in ("bullish_setup", "conflicting") for h in ready)
+    down = any(h["assessment"] in ("bearish_setup", "conflicting") for h in ready)
+    if up and down:
+        result["alignment"] = "Vade/yön çelişkisi"
+        result["alignment_note"] = (
+            "Hazır vadelerde yükseliş ve düşüş teyitleri birlikte bulunuyor. "
+            "Kısa vadeli olumlu yapı orta/uzun vadeli riski ortadan kaldırmaz."
+        )
+    elif up:
+        result["alignment"] = "Hazır vadelerde yükseliş teyidi"
+        result["alignment_note"] = (
+            "Yükseliş teyidi bulunan vadeleri ve hacim desteğini ayrı incele. "
+            "Diğer vadelerde teyit bekleniyor olabilir."
+        )
+    elif down:
+        result["alignment"] = "Hazır vadelerde düşüş baskısı"
+        result["alignment_note"] = (
+            "Düşüş teyidi bulunan vadelerde risk seviyelerini kontrol et. Kısa "
+            "vadeli hareket ana yapının değiştiği anlamına gelmez."
+        )
+    else:
+        result["alignment"] = "Yön teyidi yok" if ready else "Veri hazır değil"
+        result["alignment_note"] = "Oluşan yapılar teyit değildir; kapanış ve hacim desteğini izle."
+    missing = [h["name"] for h in horizons if h["status"] != "ready"]
+    if missing:
+        result["alignment_note"] += " Değerlendirilemeyen vadeler: " + ", ".join(missing) + "."
+    result["guidance"] = result["alignment_note"] + " " + result["guidance"]
+    return json_ready(result)
 
 
 def save_daily(db, account_id, symbol, stamp):

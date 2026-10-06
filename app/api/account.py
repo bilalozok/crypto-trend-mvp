@@ -389,12 +389,18 @@ def portfolio(request: Request, db: Db, offset: int = Query(0, ge=0)):
             item["daily_change"] = "Önceki güne ait kayıt yok."
         elif previous["method"] != portfolio_technical.VERSION or item["status"] != "ready":
             item["daily_change"] = "Kural/veri farklı; günlük yön karşılaştırması yapılmadı."
-        elif previous["technical"]["assessment"] == item["assessment"]:
-            item["daily_change"] = (
-                "Son kayıtlı güne göre yön değerlendirmesi aynı; seviyeler değişebilir."
-            )
         else:
-            item["daily_change"] = previous["technical"]["label"] + " → " + item["label"]
+            prior = {h["interval"]: h for h in previous["technical"]["horizons"]}
+            changes = []
+            for horizon in item["horizons"]:
+                old = prior.get(horizon["interval"])
+                if old is None or old["status"] != "ready" or horizon["status"] != "ready":
+                    changes.append(horizon["name"] + ": veri karşılaştırılamıyor")
+                elif old["assessment"] != horizon["assessment"]:
+                    changes.append(horizon["name"] + ": " + old["label"] + " → " + horizon["label"])
+                else:
+                    changes.append(horizon["name"] + ": yön aynı; seviyeler değişebilir")
+            item["daily_change"] = previous["day"] + " kaydına göre · " + " · ".join(changes)
         result.append(item)
     return dict(
         version=portfolio_technical.VERSION,
@@ -435,3 +441,24 @@ def portfolio_history(
             "günlük kayıt veya geçmişe dönük üretim yapılmaz."
         ),
     )
+
+
+@router.post("/portfolio/refresh")
+def refresh_portfolio_timeframes(data: PortfolioObservationInput, request: Request, db: Db):
+    from app.services import portfolio_feeds
+    from app.services.binance_market import BinanceMarketError
+
+    account = current(db, request, mutate=True)
+    symbol = data.symbol.upper()
+    require_owned_symbol(db, account.id, symbol)
+    known = db.get(BinanceSpotSymbol, symbol)
+    if known is None or not known.active:
+        raise HTTPException(status_code=422, detail="Aktif Binance Spot paritesi gerekli.")
+    try:
+        result = portfolio_feeds.refresh_symbol(db, symbol, now_ms())
+    except BinanceMarketError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail="Orta/uzun vade verisi alınamadı; daha sonra yeniden dene.",
+        ) from exc
+    return dict(symbol=symbol, feeds=result)

@@ -89,8 +89,8 @@ def test_daily_snapshot_immutable_private_and_distinct_coin(private_client, monk
     assert len(data["coins"]) == 1
     assert data["coins"][0]["assessment"] == "waiting"
     assert [h["status"] for h in data["coins"][0]["horizons"]][1:] == [
-        "not_supported",
-        "not_supported",
+        "insufficient_data",
+        "insufficient_data",
     ]
     first = private_client.post(
         "/account/portfolio/observations", json={"symbol": "BTCUSDT"}, headers=headers

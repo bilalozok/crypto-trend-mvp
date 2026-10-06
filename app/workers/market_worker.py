@@ -19,6 +19,7 @@ def collect_market(budget=180, workers=4, limit=500):
     from app.services.binance_collection import now_ms, refresh_symbol, sync_symbols
     from app.services.formation_history import record_symbol
 
+    timeframe_enabled = os.getenv("PORTFOLIO_TIMEFRAMES_ENABLED", "false").lower() == "true"
     deadline = monotonic() + budget
     _, rows = catalog.snapshot()
     with SessionLocal() as db:
@@ -32,6 +33,13 @@ def collect_market(budget=180, workers=4, limit=500):
                 )
             )
         )
+
+    portfolio_symbols = set()
+    if timeframe_enabled:
+        from app.services.portfolio_feeds import owned_symbols
+
+        with SessionLocal() as db:
+            portfolio_symbols = set(owned_symbols(db))
 
     def fetch(symbol):
         try:
@@ -64,6 +72,19 @@ def collect_market(budget=180, workers=4, limit=500):
                         "forward_tracking_failed symbol=%s error=%s", symbol, type(exc).__name__
                     )
                     return False, False
+            if symbol in portfolio_symbols:
+                from app.services.portfolio_feeds import refresh_symbol as refresh_timeframes
+
+                try:
+                    with SessionLocal() as db:
+                        refresh_timeframes(db, symbol, now_ms())
+                    logger.info("portfolio_timeframes_complete symbol=%s", symbol)
+                except Exception as exc:
+                    logger.error(
+                        "portfolio_timeframes_failed symbol=%s error=%s", symbol, type(exc).__name__
+                    )
+                    if isinstance(exc, BinanceMarketError) and exc.status_code == 503:
+                        return True, True
             return True, False
         except Exception as exc:
             with SessionLocal() as db:

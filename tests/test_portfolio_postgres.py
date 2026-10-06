@@ -36,3 +36,31 @@ def test_concurrent_daily_observation_is_unique(sessions, monkeypatch):  # noqa:
     assert sum(results) == 1
     with sessions() as db:
         assert db.query(PortfolioObservation).filter_by(account_id=owner).count() == 1
+
+
+def test_concurrent_feed_reservation_fetches_once(sessions, monkeypatch):  # noqa: F811
+    from types import SimpleNamespace
+
+    from app.services import portfolio_feeds
+
+    bar = 14_400_000
+    stamp = 1791226800000
+    closed = stamp // bar * bar
+    calls = []
+
+    def get(*args, **kwargs):
+        calls.append(1)
+        return SimpleNamespace(
+            status_code=200, json=lambda: [[closed - bar, "10", "11", "9", "10", "1", closed - 1]]
+        )
+
+    monkeypatch.setattr(portfolio_feeds.requests, "get", get)
+
+    def write(_):
+        with sessions() as db:
+            return portfolio_feeds.refresh(db, "BTCUSDT", "4h", stamp)["status"]
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        result = list(pool.map(write, [1, 2]))
+    assert result.count("updated") == 1
+    assert len(calls) == 1

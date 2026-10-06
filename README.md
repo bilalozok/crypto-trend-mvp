@@ -912,3 +912,40 @@ doldurma yoktur. `GET /account/portfolio/history?symbol=BTCUSDT` son 30 kaydı
 hesaba özel getirir. Günlük yön karşılaştırması önceki kayıtlı günle yapılır;
 aynı yön fiyat seviyelerinin aynı kaldığı anlamına gelmez. Tüm hesap yanıtları
 no-store'dur; çıkışta ve oturum bitişinde özel portföy görünümü temizlenir.
+
+
+## Portföyde orta ve uzun vade
+
+Migration `d115c2026g01`: 4h/1d mumları `portfolio_market_candles` ve
+istek durumları `portfolio_market_feeds` içinde ayrı tutulur. Mevcut 15m
+mum tablosu, ileriye dönük sinyal motoru ve kural hash'i değiştirilmez.
+`portfolio_multiframe_v2` kendi vade görünüm sürümüdür.
+
+Coin detayında **Bu coinin orta/uzun vade verilerini indir / Yenile** düğmesi
+CSRF korumalı `POST /account/portfolio/refresh` çağrısı yapar. Yalnızca hesabın
+alış kaydı olan aktif spot USDT coinleri için Binance Spot 4h ve 1d kline
+verisi istenir. Kişisel maliyetler, miktarlar, notlar veya hesap bilgileri
+kaynağa gönderilmez. GET teknik analiz isteği ağdan veri indirmez.
+
+Her kaynak ayrı 201 mumla başlatılır; açık mum atılır, 200 kapanmış mum
+analize yeterlidir. Yeni listelenen coinlerde 200 mum yoksa yetersiz geçmiş
+etiketi görünür. UTC sınırları ve OHLCV doğrulanır; eksik/eski/bozuk veri yön
+sinyali sayılmaz. Günlük mum UTC 00:00'da (Türkiye 03:00) kapanır. Teyit yaşı
+ilgili vadenin mum adedidir; 4h için dört mum 16 saat, 1d için dört mum dört
+gündür. Veri her vadede ayrı zamanda kapanır; zamanları tabloda gösterilir.
+
+Mevcut motorun indeks başına fiyat/hacim kuralları ayrı OHLCV kaynaklarına
+uygulanır; fiyatlar yeniden örneklenmez. Zaman damgaları kaynak vadesine geri
+çevrilir. Ana 15m motorunun global değişkenleri değişmez; bu kuralların diğer
+vadelerde başarı olasılığı kalibre edilmiş değildir. Vade uyumu hazır
+vadelerdeki yönlerin karşılaştırmasıdır; eksik vadeler açıkça listelenir,
+teyit adedi bağımsız kanıt sayılmaz.
+
+Worker ortamında `PORTFOLIO_TIMEFRAMES_ENABLED=true` etkinleştirilirse aktif
+hesapların alış coinleri (en fazla 500 benzersiz parite) her normal toplama
+çevriminde güncellenir. Başarıyla alınmış kapanış için tekrar ağ isteği
+atılmaz; başarısız/sürmekte olan istekler parite/vade başına bir dakika
+sınırlıdır. Kaynak blok/rate limit durumunda ek istekler durdurulur. Günlük
+özel gözlem düğmeyle saklanmaya devam eder; mevcut ilk günlük gözlem ve v1
+kayıtları değiştirilmez. Eski ve yeni portföy yöntemleri günlük yön
+karşılaştırmasında karıştırılmaz.
