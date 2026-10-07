@@ -185,3 +185,70 @@ def test_migration_upgrade_preserves_legacy_candles(tmp_path, monkeypatch):
         version = connection.exec_driver_sql("SELECT version_num FROM alembic_version").scalar()
         assert version == "1515c2026k01"
     engine.dispose()
+
+
+@pytest.mark.parametrize(
+    "failure,expected",
+    [("market", 0), ("all_market", 1), ("internal", 1), ("blocked", 1), ("history", 1)],
+)
+def test_worker_partial_market_failure_preserves_fatal_errors(
+    monkeypatch, caplog, failure, expected
+):
+    monkeypatch.setattr(
+        "app.workers.market_worker.catalog.snapshot",
+        lambda: (datetime.now(UTC), _catalog("BTCUSDT", "ETHUSDT")),
+    )
+    for key in (
+        "PORTFOLIO_TIMEFRAMES_ENABLED",
+        "FORWARD_TRACKING_ENABLED",
+        "PORTFOLIO_DAILY_ENABLED",
+        "CANDIDATE_OBSERVATIONS_ENABLED",
+        "CANDIDATE_OUTCOMES_ENABLED",
+    ):
+        monkeypatch.setenv(key, "false")
+
+    def refresh(db, symbol, limit):
+        if failure == "all_market" or symbol == "BTCUSDT" and failure != "history":
+            if failure == "internal":
+                raise RuntimeError("private-secret-detail")
+            raise BinanceMarketError(
+                "Binance returned no candles", 503 if failure == "blocked" else 502
+            )
+        return 1
+
+    def history(db, symbol, stamp):
+        if failure == "history" and symbol == "BTCUSDT":
+            raise RuntimeError("private-secret-detail")
+        return 0
+
+    monkeypatch.setattr("app.services.binance_collection.refresh_symbol", refresh)
+    monkeypatch.setattr("app.services.formation_history.record_symbol", history)
+    with caplog.at_level("INFO"):
+        assert collect_market(workers=1) == expected
+    assert "private-secret-detail" not in caplog.text
+    assert ("outcome=partial" if expected == 0 else "outcome=failed") in caplog.text
+    if failure == "market":
+        assert "reason=empty_candles" in caplog.text
+        with SessionLocal() as db:
+            assert db.get(BinanceSpotSymbol, "BTCUSDT").last_error == "BinanceMarketError"
+        retried = []
+        monkeypatch.setattr(
+            "app.services.binance_collection.refresh_symbol",
+            lambda db, symbol, limit: retried.append(symbol) or 1,
+        )
+        assert collect_market(workers=1) == 0
+        assert set(retried) == {"BTCUSDT", "ETHUSDT"}
+
+
+def test_worker_logs_only_safe_http_error_metadata():
+    import requests
+
+    from app.workers.market_worker import market_error_details
+
+    response = requests.Response()
+    response.status_code = 400
+    cause = requests.HTTPError("secret URL and response content", response=response)
+    error = BinanceMarketError("Binance market data request failed")
+    error.__cause__ = cause
+    assert market_error_details(error) == ("request_failed", 400)
+    assert market_error_details(RuntimeError("secret")) == ("internal_error", None)
