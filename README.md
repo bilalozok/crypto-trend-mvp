@@ -1084,3 +1084,14 @@ Veri eksikliği aday kaybı değildir. Kapanış fiyatı gözlemde saklanır.
 Kayıtlı tarama açıldığında son 200 gözlem gösterilir; toplam sayı ayrıca belirtilir.
 Taramayı silmek gözlemlerini de siler. Gözlemler çıkış emri değildir; worker
 gecikmesi ve eksik veri nedeniyle kesin değişim anını göstermez.
+
+### Dashboard çalışma alanları
+
+Piyasa analizi herkese açık coin/formasyon analizi, genel sonuçlar ve ortak
+raporları kapsar. Özel takip tek giriş alanının altında portföy, aday takibi
+ve alış kayıtlarına ayrılır. Adaylarda tarama/kayıtlar, sonuç/değerlendirme,
+coin geçmişi alt sekmeleri vardır. Login eski tab bağlantılarını korur;
+giriş yokken özel içerik gizlenir. Portföy listesi kısa özettir; yorumlar
+coin ayrıntısındadır. Uzun geçmişler ve ikincil formlar açılır bölümlerdedir.
+Tablolar sabit başlık/coin sütunu ve tam sürümü tıklayarak açılan kısa hash
+gösterimi kullanır. Hesaplama ve kayıt kuralları değişmez; migration gerekmez.

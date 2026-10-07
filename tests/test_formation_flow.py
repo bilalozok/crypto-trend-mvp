@@ -36,7 +36,7 @@ def test_pattern_filter_api_and_legacy_scan(client, monkeypatch):
 
 def test_dashboard_tabs_pattern_names_and_notes(client):
     html = client.get("/analysis/binance/dashboard").text
-    assert len(re.findall('role="tab" ', html)) == 7
+    assert len(re.findall('id="tab-[^"]+" role="tab"', html)) == 7
     for name in (
         "coin",
         "formations",
