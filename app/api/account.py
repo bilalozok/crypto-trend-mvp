@@ -554,6 +554,16 @@ def candidate_symbol_history(
     return candidate_archive.history(db, current(db, request).id, symbol.upper())
 
 
+@router.get("/candidate-scans/study")
+def candidate_study(request: Request, db: Db, days: int = Query(7, ge=1, le=30)):
+    from app.services import candidate_study as study
+
+    try:
+        return study.report(db, current(db, request).id, now_ms(), days)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
 @router.get("/candidate-scans/{scan_id}")
 def get_candidate_scan(scan_id: UUID, request: Request, db: Db):
     from app.db.models.candidate_scan import CandidateScan

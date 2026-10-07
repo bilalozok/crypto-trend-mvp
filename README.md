@@ -1045,3 +1045,16 @@ sonraki turlarda yeniden denenir; worker geçmiş veri indirmez.
 Tamamlanan sonuçlar değişmez. Eski giriş zamanı olmayan taramalar dışlanır.
 Dashboard yenilemesi saklanan sonuçları gösterir; manuel hesaplama da kullanılabilir.
 Migration gerekmez; mevcut 0415c2026j01 şeması kullanılır.
+
+### Taramalar arası aday değerlendirmesi
+
+Adaylar sekmesindeki değerlendirme son 7/30 günün hesaba özel taramalarını
+birleştirir. Kural sürümleri ayrı tutulur. Her kural/coin için giriş zamanına
+göre en erken kayıt seçilir; sonraki 24 saatteki tekrarlar dışlanır.
+Tam 24 saat sınırındaki giriş dahil edilir. Bu seçim formasyon, getiri veya
+sonucun tamamlanmasına göre değişmez. Sadece dört süresi de saklanmış adaylarla
+1/2/4/24 saat karşılaştırması yapılır; tamamlanmamış sayısı ayrıca gösterilir.
+GET /account/candidate-scans/study?days=7 hiçbir sonuç üretmez veya kaydetmez.
+Sonuçlar gerçekleşmiş portföy getirisi veya gelecek başarı olasılığı değildir.
+Seçilen dönemde 1000 taramadan fazlası varsa kısmi özet yerine açık hata verilir.
+Migration gerekmez. Kayıt silme değerlendirme örneklemini değiştirebilir.
