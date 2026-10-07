@@ -5,6 +5,7 @@ from uuid import uuid4
 import pytest
 
 from app.db.models.account import Account
+from app.db.models.candidate_observation import CandidateObservation
 from app.db.models.candidate_outcome import CandidateOutcome
 from app.db.models.candidate_scan import CandidateScan
 from app.db.models.portfolio_observation import PortfolioObservation
@@ -191,3 +192,42 @@ def test_concurrent_candidate_outcomes_are_immutable(sessions, monkeypatch):  # 
     with sessions() as db:
         assert settle_due(db, entry + 4 * BAR) == 1
         assert db.query(CandidateOutcome).filter_by(scan_id=scan_id).count() == 1
+
+
+def test_concurrent_live_candidate_observation_is_unique(sessions, monkeypatch):  # noqa: F811
+    from app.services import candidate_observer
+    from app.services.candidate_archive import archive_hash
+    from app.services.formations import BAR
+
+    owner, sid = str(uuid4()), str(uuid4())
+    entry = 1791226800000 // BAR * BAR
+    with sessions() as db:
+        db.add(
+            Account(
+                id=owner, username="observer-test", password_hash="test", active=True, created_ms=0
+            )
+        )
+        db.flush()
+        db.add(
+            CandidateScan(
+                id=sid,
+                account_id=owner,
+                request_id=str(uuid4()),
+                created_ms=entry,
+                rule_hash=archive_hash(),
+                payload=dict(evaluation_entry_ms=entry, candidates=[dict(symbol="BTCUSDT")]),
+            )
+        )
+        db.commit()
+    monkeypatch.setenv("CANDIDATE_OBSERVATIONS_ENABLED", "true")
+
+    # A missing-data observation still has exactly one immutable record per window.
+    def write(_):
+        with sessions() as db:
+            return candidate_observer.observe_symbol(db, "BTCUSDT", entry + BAR)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        counts = list(pool.map(write, [0, 1]))
+    assert sum(counts) == 1
+    with sessions() as db:
+        assert db.query(CandidateObservation).filter_by(scan_id=sid).count() == 1

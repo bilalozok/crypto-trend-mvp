@@ -1070,3 +1070,17 @@ tam eşleşen mevcut tarihsel 15m mumdan okunur; bulunamazsa boş gösterilir.
 Bu fiyat değişmez tarama kaydının parçası değildir, sonradan veri düzeltmeleriyle
 değişebilir. Çizelge satış emri veya sonuç değerlendirmesinde çıkış kuralı değildir.
 Migration gerekmez.
+
+### Otomatik 15m aday gözlemleri
+
+1515c2026k01 migration sonrasında workerda CANDIDATE_OBSERVATIONS_ENABLED=true
+ile etkinleştirilir (varsayılan kapalı). Yeni taramaların adayları varsayımsal
+girişten itibaren 24 saat izlenir. Başarılı veri toplama sonrası yalnızca en son
+kapanması beklenen 15m pencere gözlenir; geçmiş pencereler doldurulmaz.
+Aynı tarama/coin/mumda ilk gözlem saklanır; tekrar çalıştırma değiştirmez.
+Aktif hesaplar işlenir. Eski giriş zamanı olmayan taramalar dışlanır.
+Analiz kaynağı taramanın kural hashinden farklıysa aday durumu değerlendirilmez.
+Veri eksikliği aday kaybı değildir. Kapanış fiyatı gözlemde saklanır.
+Kayıtlı tarama açıldığında son 200 gözlem gösterilir; toplam sayı ayrıca belirtilir.
+Taramayı silmek gözlemlerini de siler. Gözlemler çıkış emri değildir; worker
+gecikmesi ve eksik veri nedeniyle kesin değişim anını göstermez.

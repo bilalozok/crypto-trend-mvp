@@ -596,6 +596,9 @@ def delete_candidate_scan(scan_id: UUID, request: Request, db: Db):
     )
     if owned is None:
         raise HTTPException(status_code=404, detail="Kayıtlı tarama bulunamadı.")
+    from app.db.models.candidate_observation import CandidateObservation
+
+    db.execute(delete(CandidateObservation).where(CandidateObservation.scan_id == owned))
     db.execute(delete(CandidateOutcome).where(CandidateOutcome.scan_id == owned))
     removed = db.execute(
         delete(CandidateScan)
@@ -639,3 +642,11 @@ def update_candidate_outcomes(scan_id: UUID, request: Request, db: Db):
 
     row = require_candidate_scan(db, current(db, request, mutate=True).id, scan_id)
     return candidate_outcomes.results(db, row, now_ms(), persist=True)
+
+
+@router.get("/candidate-scans/{scan_id}/observations")
+def candidate_observations(scan_id: UUID, request: Request, db: Db):
+    from app.services.candidate_observer import history
+
+    row = require_candidate_scan(db, current(db, request).id, scan_id)
+    return history(db, row)

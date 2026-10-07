@@ -47,6 +47,20 @@ def collect_market(budget=180, workers=4, limit=500):
                 count = refresh_symbol(db, symbol, limit)
             logger.info("binance_fetch_complete symbol=%s interval=15m candles=%s", symbol, count)
             try:
+                from app.services.candidate_observer import observe_symbol
+
+                with SessionLocal() as db:
+                    observed = observe_symbol(db, symbol, now_ms())
+                if observed:
+                    logger.info(
+                        "candidate_observation_complete symbol=%s recorded=%s", symbol, observed
+                    )
+            except Exception as exc:
+                logger.error(
+                    "candidate_observation_failed symbol=%s error=%s", symbol, type(exc).__name__
+                )
+
+            try:
                 with SessionLocal() as db:
                     events = record_symbol(db, symbol, now_ms())
                 logger.info("formation_history_complete symbol=%s events=%s", symbol, events)
