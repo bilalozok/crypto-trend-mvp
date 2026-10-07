@@ -528,21 +528,31 @@ def create_candidate_scan(data: CandidateScanInput, request: Request, db: Db):
 
 
 @router.get("/candidate-scans")
-def list_candidate_scans(request: Request, db: Db, offset: int = Query(0, ge=0)):
-    from app.db.models.candidate_scan import CandidateScan
-    from app.services import candidate_archive
+def list_candidate_scans(
+    request: Request,
+    db: Db,
+    offset: int = Query(0, ge=0),
+    symbol: str | None = Query(None, pattern=r"^[A-Za-z0-9]{1,64}$"),
+    kind: Literal["all", "legacy", "tracked", "open", "ended"] = "all",
+    start: datetime | None = None,
+    end: datetime | None = None,
+):
+    from app.services.candidate_scan_list import listing
 
     owner = current(db, request).id
-    rows = db.scalars(
-        select(CandidateScan)
-        .where(CandidateScan.account_id == owner)
-        .order_by(CandidateScan.created_ms.desc(), CandidateScan.id.desc())
-        .offset(offset)
-        .limit(21)
-    ).all()
-    return dict(
-        scans=[candidate_archive.summary(row) for row in rows[:20]],
-        next_offset=offset + 20 if len(rows) > 20 else None,
+    if any(value is not None and value.utcoffset() is None for value in (start, end)):
+        raise HTTPException(status_code=422, detail="Tarih aralığında saat dilimi gerekli.")
+    if start is not None and end is not None and end <= start:
+        raise HTTPException(status_code=422, detail="Bitiş, başlangıçtan sonra olmalı.")
+    return listing(
+        db,
+        owner,
+        now_ms(),
+        offset,
+        symbol,
+        kind,
+        int(start.timestamp() * 1000) if start is not None else None,
+        int(end.timestamp() * 1000) if end is not None else None,
     )
 
 

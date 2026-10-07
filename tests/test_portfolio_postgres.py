@@ -231,3 +231,45 @@ def test_concurrent_live_candidate_observation_is_unique(sessions, monkeypatch):
     assert sum(counts) == 1
     with sessions() as db:
         assert db.query(CandidateObservation).filter_by(scan_id=sid).count() == 1
+
+
+def test_candidate_list_filters_postgres_json_and_bigint(sessions):  # noqa: F811
+    from app.services.candidate_scan_list import listing
+
+    owner = str(uuid4())
+    stamp = 1791392400000
+    with sessions() as db:
+        db.add(
+            Account(
+                id=owner,
+                username="scan-filter-test",
+                password_hash="test",
+                active=True,
+                created_ms=0,
+            )
+        )
+        db.flush()
+        for index, symbol in enumerate(("BTCUSDT", "ETHUSDT")):
+            db.add(
+                CandidateScan(
+                    id=str(uuid4()),
+                    account_id=owner,
+                    request_id=str(uuid4()),
+                    created_ms=stamp + index,
+                    rule_hash="test",
+                    payload=dict(
+                        evaluation_entry_ms=stamp,
+                        candidates=[dict(symbol=symbol)],
+                        universe=[],
+                        candle_close_time=None,
+                        quality_counts={},
+                    ),
+                )
+            )
+        db.commit()
+        result = listing(
+            db, owner, stamp, symbol="btcusdt", kind="open", start=stamp, end=stamp + 1
+        )
+        assert len(result["scans"]) == 1
+        assert result["scans"][0]["tracking_state"] == "open"
+        assert listing(db, owner, stamp, kind="legacy")["scans"] == []
