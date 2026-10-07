@@ -1128,3 +1128,5 @@ Seçilen taramada GET `/account/candidate-scans/{scan_id}/tracking` yalnızca sa
 Kayıtlı aday rozetleri tarama anını belirtir. Takip özeti ilk gözlem, son uygun durum değişimi, son kapanış ve gözlem sayısını gösterir; veri/kural uyumsuzluğu değişim sayılmaz ve karşılaştırmayı keser. Ayrıntılı otomatik gözlemler açılır bölümde tutulur.
 
 Seçilen taramanın aday coininde 4h/1d hazırlama işlemi oturum, sahiplik ve CSRF kontrolüyle mevcut sınırlı veri yenileyiciyi kullanır. Yeni teknik değerlendirme ayrı gösterilir; tarama ve sonuç kayıtları değişmez. Bu işlem yalnızca seçilen coini yeniler; otomatik sürekli takip başlatmaz. Migration gerekmez.
+
+Adayın güncel vade değerlendirmesinde izlenecek yapı ve takip adımı gösterilir. Ayrı USDT seviye tablosu yalnızca hazır vadelerin mevcut aktif/oluşan koşullarını kullanır; eski/geçersiz teyitleri aktif seviye olarak sunmaz. Analiz kuralları ve arşivler değiştirilmez.
