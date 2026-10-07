@@ -1058,3 +1058,15 @@ GET /account/candidate-scans/study?days=7 hiçbir sonuç üretmez veya kaydetmez
 Sonuçlar gerçekleşmiş portföy getirisi veya gelecek başarı olasılığı değildir.
 Seçilen dönemde 1000 taramadan fazlası varsa kısmi özet yerine açık hata verilir.
 Migration gerekmez. Kayıt silme değerlendirme örneklemini değiştirebilir.
+
+### Aday durum değişimi çizelgesi
+
+Coin tarama geçmişiyle birlikte, son 100 kayıtlı taramadaki adaylığa giriş,
+adaylığın korunması ve aday koşullarının ilk gözlenen kaybı gösterilir.
+Veri hazır değilken aday kaybı üretilmez. Kural sürümü değişince karşılaştırma
+yeniden başlar. Tarama aralıkları içindeki kesin kayıp zamanı bilinmez.
+Kapanış fiyatı eski taramada saklanmadığından, taramanın veri kapanışına
+tam eşleşen mevcut tarihsel 15m mumdan okunur; bulunamazsa boş gösterilir.
+Bu fiyat değişmez tarama kaydının parçası değildir, sonradan veri düzeltmeleriyle
+değişebilir. Çizelge satış emri veya sonuç değerlendirmesinde çıkış kuralı değildir.
+Migration gerekmez.

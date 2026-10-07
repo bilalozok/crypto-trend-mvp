@@ -550,8 +550,9 @@ def candidate_symbol_history(
     request: Request, db: Db, symbol: str = Query(pattern=r"^[A-Za-z0-9]{1,64}$")
 ):
     from app.services import candidate_archive
+    from app.services.candidate_lifecycle import enrich
 
-    return candidate_archive.history(db, current(db, request).id, symbol.upper())
+    return enrich(db, candidate_archive.history(db, current(db, request).id, symbol.upper()))
 
 
 @router.get("/candidate-scans/study")
