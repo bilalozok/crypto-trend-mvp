@@ -1138,3 +1138,5 @@ Worker için `CANDIDATE_TIMEFRAMES_ENABLED=true` etkinleştirilince aktif kullan
 Loglar: `candidate_timeframes_eligible symbols=N`, başarıda `candidate_timeframes_complete symbol=...`; hata mevcut `portfolio_timeframes_failed` kaydındadır. Migration gerekmez.
 
 Aday takip durumunda dört coin özeti gösterilir: son gözlemde aday, koşulları yok, yeniden adaylık gözlendi, değerlendirilemedi/gözlem yok. Yeniden adaylık yalnızca uygun gözlemlerde false→true değişiminden çıkarılır; veri/kural uyumsuzluğu karşılaştırmayı ve yeniden adaylık durumunu sıfırlar. Sonraki uygun aday gözlemleri bu yeniden adaylık durumunu korur; koşullar kaybolunca durum değişir. Kartlar anlık al/sat önerisi değildir ve sonuç saklanma sayılarından ayrıdır.
+
+Aday durum kartları tabloyu filtreler; aynı karta tekrar basmak veya Tüm adaylar düğmesi filtreyi kaldırır. Filtre aynı taramanın yenilenmesinde korunur, başka tarama açınca ve çıkışta sıfırlanır. Kartlar/sonuç sayıları tüm seçilen taramayı temsil eder; filtre yalnızca coin satırlarını daraltır.
