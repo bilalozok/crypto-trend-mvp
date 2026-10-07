@@ -1144,3 +1144,5 @@ Aday durum kartları tabloyu filtreler; aynı karta tekrar basmak veya Tüm aday
 Kayıtlı aday taraması listesi coin (yalnızca saklanan adaylar), Türkiye tarih/saat aralığı ve takip türüne göre veritabanında filtrelenir; filtreler sayfalama öncesinde uygulanır. Tarih oluşturulma zamanı içindir, başlangıç dahil/bitiş hariçtir. Kayıt sahipliği korunur. Takip başlangıcı olan/açık/bitmiş/eski sınıfları worker sağlık veya sonuç tamamlama göstergesi değildir. Arşiv değişmez; migration gerekmez.
 
 Kayıtlı taramada 4h/1d hazırlama düğmesi coin adının hemen altında, sabit coin sütununda gösterilir. İzlenecek adım açıklaması açılır hücrede tutulur ve genişliği sınırlandırılır; uzun metin işlem düğmesini sağ kenara itmez.
+
+Genel ileriye dönük sonuçlarda formasyon adına basmak seçilen formasyon/süre için özetin dönemi, kural sürümü ve gözlem zamanına uyan geçmiş coin sinyallerini sayfalı olarak açar. Sonuçlar son saklanan haliyle okunur; özetten sonra tamamlanmış olabilir. Güncel formasyon eşleşmesi değildir. Coin düğmesi mevcut güncel grafik akışını kullanır. Sinyaller tekil coinlerden farklı sayılabilir; bekleyen/geçersiz sonuçlar sıfır sayılmaz. Migration gerekmez.

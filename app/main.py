@@ -444,6 +444,28 @@ def forward_summary(
         raise HTTPException(status_code=503, detail="Forward summary database unavailable") from exc
 
 
+@app.get("/analysis/binance/forward/pattern-signals")
+def forward_pattern_signals(
+    db: DbDep,
+    pattern: str = Query(min_length=1, max_length=100),
+    hours: int = Query(1),
+    days: int = Query(7, ge=1, le=30),
+    rule_hash: str = Query(pattern="^[0-9a-f]{64}$"),
+    as_of_ms: int = Query(ge=0),
+    offset: int = Query(0, ge=0),
+):
+    from app.services.forward_pattern_signals import listing
+
+    if hours not in (1, 2, 4):
+        raise HTTPException(status_code=422, detail="Süre 1, 2 veya 4 saat olmalı.")
+    if as_of_ms > now_ms():
+        raise HTTPException(status_code=422, detail="Gelecekteki bir özet zamanı seçilemez.")
+    try:
+        return listing(db, as_of_ms, days, rule_hash, pattern, hours, offset)
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=503, detail="Formasyon sinyalleri okunamadı.") from exc
+
+
 @app.post("/analysis/binance/forward/reports", status_code=201)
 def create_forward_report(
     db: DbDep,
