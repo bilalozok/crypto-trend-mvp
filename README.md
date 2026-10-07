@@ -1100,3 +1100,10 @@ gösterimi kullanır. Hesaplama ve kayıt kuralları değişmez; migration gerek
 ### Dashboard okunabilirlik düzenlemesi
 
 Oturum açıkken hesap alanı küçük bir durum satırıdır. Coin detayındaki vade yorumları kısa, orta ve uzun vade kartlarında okunur. Veri açıklamaları Nasıl okunur bölümündedir. Adaylarda seçilen taramanın sonuçları önce, taramalar arası değerlendirme ayrı açılır bölümde gösterilir. Hesaplanamayan sonuçların nedeni açılabilir; boş tablolar yerine açıklama görünür. Teknik fiyatlarda sekiz anlamlı basamak gösterilir; tam değer odaklanabilir değerin açıklamasında korunur. Hesaplamalar ve kayıt kuralları değişmez.
+
+
+### Kullanıcı yönetimi ve teknik yön göstergeleri
+
+Özel takip alanında Kullanıcı yönetimi yalnızca `bilalozok` oturumuna görünür. GET/POST `/account/admin/users` sunucuda da bu aktif hesabı zorunlu tutar; hesap oluşturma Origin ve CSRF kontrollerinden geçer. Yeni kullanıcı adları küçük harfe dönüştürülür, tekrar eden adlar reddedilir, parolalar 15–128 karakterdir ve mevcut scrypt yöntemiyle saklanır. Liste parolaları veya parola özetlerini içermez. Yönetici yetkisi başka kullanıcılara verilemez; yeni hesaplar normal özel hesaplardır. Migration gerekmez.
+
+Portföy ve kayıtlı adayların vade göstergeleri yeşil Alımı değerlendir, kırmızı Satışı / riski değerlendir, sarı Teyit bekle / Çelişkili ve gri Veri hazır değil etiketleridir. Renkler mevcut hazır vadenin assessment alanından türetilir; oluşan veya geçersizleşmiş yapı işlem teyidi sayılmaz. Portföy genel yönü eksik veri varsa değerlendirilmez; zıt teyit varsa sarıdır. Kayıtlı adaylarda etiket tarama anındaki kaydedilmiş duruma aittir. Fiyat getirisi rengi teknik yön önerisi yerine geçmez.

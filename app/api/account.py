@@ -7,9 +7,9 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import delete, select
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
-from app.db.models.account import AccountSession, Purchase
+from app.db.models.account import Account, AccountSession, Purchase
 from app.db.models.binance_spot import BinanceSpotSymbol
 from app.db.session import SessionLocal
 from app.services import account_auth, portfolio_technical, purchase_analysis
@@ -108,6 +108,7 @@ def session(request: Request, db: Db):
     account = current(db, request)
     return dict(
         username=account.username,
+        can_manage_users=account.username == "bilalozok",
         csrf_token=account_auth.csrf_token(request.cookies[account_auth.COOKIE]),
     )
 
@@ -650,3 +651,46 @@ def candidate_observations(scan_id: UUID, request: Request, db: Db):
 
     row = require_candidate_scan(db, current(db, request).id, scan_id)
     return history(db, row)
+
+
+class NewAccountInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    username: str = Field(min_length=1, max_length=32, pattern=r"^[a-zA-Z0-9_.-]+$")
+    password: str = Field(min_length=15, max_length=128)
+
+
+def administrator(db, request, mutate=False):
+    account = current(db, request, mutate=mutate)
+    if account.username != "bilalozok":
+        raise HTTPException(status_code=403, detail="Kullanıcı yönetimi için yetkin yok.")
+    return account
+
+
+@router.get("/admin/users")
+def list_accounts(request: Request, db: Db):
+    administrator(db, request)
+    rows = db.scalars(select(Account).order_by(Account.created_ms, Account.username)).all()
+    return dict(
+        users=[
+            dict(username=r.username, active=r.active, created_at=timestamp(r.created_ms))
+            for r in rows
+        ]
+    )
+
+
+@router.post("/admin/users", status_code=201)
+def add_account(data: NewAccountInput, request: Request, db: Db):
+    administrator(db, request, mutate=True)
+    username = data.username.lower()
+    if db.scalar(select(Account.id).where(Account.username == username)):
+        raise HTTPException(status_code=409, detail="Bu kullanıcı adı zaten kayıtlı.")
+    if not account_auth.HASH_SLOTS.acquire(blocking=False):
+        raise HTTPException(status_code=429, detail="Hesap işlemi meşgul; biraz sonra dene.")
+    try:
+        account_auth.create_account(db, username, data.password, now_ms())
+    except (ValueError, IntegrityError) as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Bu kullanıcı adı zaten kayıtlı.") from exc
+    finally:
+        account_auth.HASH_SLOTS.release()
+    return dict(username=username, active=True)
