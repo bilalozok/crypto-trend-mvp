@@ -1122,3 +1122,9 @@ Yeni kullanıcı ve parola değiştirme alanlarında Göster/Gizle yalnızca o a
 ### Aday takip durumu
 
 Seçilen taramada GET `/account/candidate-scans/{scan_id}/tracking` yalnızca sahibi için saklanmış son gözlemleri ve tamamlanan sonuçları özetler. Eski kayıt, adaysız tarama, giriş bekleniyor, ilk kapanış bekleniyor, açık/bitmiş 24 saatlik pencere ayrılır. Her coin için son gözlenen aday durumu, kapanış ve gözlem zamanı gösterilir. Hazır olmayan veya farklı kural sürümlü kayıt aday kaybı sayılmaz. Dört horizonun saklanmış tamamlanan, süre bekleyen ve süresi dolmuş fakat henüz saklanmamış sayıları ayrı tutulur. Önizlemede hesaplanan ama saklanmayan sonuç tamamlanmış saklı kayıt sayılmaz. Worker etkinliği bu ekranla kesin doğrulanamaz; son beklenen kapanışta kayıt yokluğu belirtilir, geçmiş gözlemler üretilmez. Yenileme salt okunurdur; migration gerekmez.
+
+### Adaylarda geçmiş ve güncel görünüm
+
+Kayıtlı aday rozetleri tarama anını belirtir. Takip özeti ilk gözlem, son uygun durum değişimi, son kapanış ve gözlem sayısını gösterir; veri/kural uyumsuzluğu değişim sayılmaz ve karşılaştırmayı keser. Ayrıntılı otomatik gözlemler açılır bölümde tutulur.
+
+Seçilen taramanın aday coininde 4h/1d hazırlama işlemi oturum, sahiplik ve CSRF kontrolüyle mevcut sınırlı veri yenileyiciyi kullanır. Yeni teknik değerlendirme ayrı gösterilir; tarama ve sonuç kayıtları değişmez. Bu işlem yalnızca seçilen coini yeniler; otomatik sürekli takip başlatmaz. Migration gerekmez.

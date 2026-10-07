@@ -99,3 +99,72 @@ def test_tracking_requires_owner_and_does_not_write(private_client):
     with SessionLocal() as db:
         assert db.query(CandidateObservation).count() == 0
         assert db.query(CandidateOutcome).count() == 0
+
+
+def test_summary_changes_skip_unknown_and_future(private_client):
+    with SessionLocal() as db:
+        row = scan(db)
+        for n, status, value in [
+            (1, "ready", True),
+            (2, "ready", False),
+            (3, "rule_changed", None),
+            (4, "ready", True),
+            (5, "ready", False),
+            (6, "ready", True),
+        ]:
+            db.add(
+                CandidateObservation(
+                    scan_id=row.id,
+                    symbol="BTCUSDT",
+                    close_ms=STAMP + n * BAR,
+                    payload=dict(status=status, qualified=value, close_price="10"),
+                )
+            )
+        db.commit()
+        result = overview(db, row, STAMP + 4 * BAR)["candidates"][0]
+        assert result["observation_count"] == 4
+        assert (
+            result["first_close_time"] == overview(db, row, STAMP + BAR)["last_observation_close"]
+        )
+        assert (
+            result["last_change_close_time"]
+            == overview(db, row, STAMP + 2 * BAR)["last_observation_close"]
+        )
+        assert result["last_close_price"] == "10"
+        later = overview(db, row, STAMP + 5 * BAR)["candidates"][0]
+        assert later["last_change_close_time"] == later["last_close_time"]
+
+
+def test_candidate_feed_refresh_security_and_frozen_scan(private_client, monkeypatch):
+    from app.services import portfolio_feeds, portfolio_technical
+
+    calls = []
+    monkeypatch.setattr(
+        portfolio_feeds,
+        "refresh_symbol",
+        lambda db, symbol, stamp: (
+            calls.append(symbol) or {"4h": dict(status="updated"), "1d": dict(status="cached")}
+        ),
+    )
+    monkeypatch.setattr(
+        portfolio_technical, "technical", lambda db, symbol, stamp: dict(horizons=[], symbol=symbol)
+    )
+    with SessionLocal() as db:
+        row = scan(db)
+        row_id, frozen = row.id, row.payload.copy()
+    path = "/account/candidate-scans/" + row_id + "/refresh"
+    assert private_client.post(path, json=dict(symbol="BTCUSDT")).status_code == 401
+    bob = auth(private_client, "bob")
+    assert private_client.post(path, headers=bob, json=dict(symbol="BTCUSDT")).status_code == 404
+    alice = auth(private_client)
+    assert private_client.post(path, json=dict(symbol="BTCUSDT")).status_code == 403
+    assert private_client.post(path, headers=alice, json=dict(symbol="ETHUSDT")).status_code == 404
+    assert not calls
+    response = private_client.post(path, headers=alice, json=dict(symbol="btcusdt"))
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+    assert calls == ["BTCUSDT"]
+    with SessionLocal() as db:
+        assert db.get(CandidateScan, row_id).payload == frozen
+        assert db.query(CandidateOutcome).count() == 0
+        assert db.query(CandidateObservation).count() == 0

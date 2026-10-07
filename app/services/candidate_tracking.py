@@ -36,6 +36,14 @@ def overview(db, scan, stamp):
         )
         .where(CandidateObservation.scan_id == scan.id, ranked.c.rank == 1)
     ).all()
+    history = db.scalars(
+        select(CandidateObservation)
+        .where(CandidateObservation.scan_id == scan.id, CandidateObservation.close_ms <= stamp)
+        .order_by(CandidateObservation.close_ms)
+    ).all()
+    timelines = {}
+    for observation in history:
+        timelines.setdefault(observation.symbol, []).append(observation)
     by_symbol = {r.symbol: r for r in latest}
     stored = {
         (r.symbol, r.horizon_bars)
@@ -79,6 +87,17 @@ def overview(db, scan, stamp):
             label = "Adaylık korunuyor" if qualified else "Son gözlemde aday koşulları yok"
         else:
             label = "Değerlendirilemedi" if observation else "Gözlem yok"
+        timeline = timelines.get(symbol, [])
+        previous = None
+        changed = None
+        for point in timeline:
+            value = point.payload.get("qualified")
+            if point.payload.get("status") != "ready" or not isinstance(value, bool):
+                previous = None
+                continue
+            if previous is not None and value != previous:
+                changed = point.close_ms
+            previous = value
         completed, pending, missing, legacy = 0, 0, 0, 0
         for bars in HORIZONS:
             if (symbol, bars) in stored:
@@ -93,6 +112,10 @@ def overview(db, scan, stamp):
             dict(
                 symbol=symbol,
                 label=label,
+                observation_count=len(timeline),
+                first_close_time=timestamp(timeline[0].close_ms).isoformat() if timeline else None,
+                last_change_close_time=timestamp(changed).isoformat() if changed else None,
+                last_close_price=payload.get("close_price") if usable else None,
                 qualified=qualified if usable else None,
                 last_close_time=(
                     timestamp(observation.close_ms).isoformat() if observation else None

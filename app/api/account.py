@@ -725,3 +725,34 @@ def candidate_tracking_status(scan_id: UUID, request: Request, db: Db):
 
     row = require_candidate_scan(db, current(db, request).id, scan_id)
     return overview(db, row, now_ms())
+
+
+@router.post("/candidate-scans/{scan_id}/refresh")
+def refresh_candidate_timeframes(
+    scan_id: UUID, data: PortfolioObservationInput, request: Request, db: Db
+):
+    from app.services import portfolio_feeds, portfolio_technical
+    from app.services.binance_market import BinanceMarketError
+
+    row = require_candidate_scan(db, current(db, request, mutate=True).id, scan_id)
+    symbol = data.symbol.upper()
+    if symbol not in {c["symbol"] for c in row.payload["candidates"]}:
+        raise HTTPException(status_code=404, detail="Bu taramada aday coin bulunamadı.")
+    known = db.get(BinanceSpotSymbol, symbol)
+    if known is None or not known.active:
+        raise HTTPException(status_code=422, detail="Aktif Binance Spot paritesi gerekli.")
+    try:
+        feeds = portfolio_feeds.refresh_symbol(db, symbol, now_ms())
+    except BinanceMarketError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail="Orta/uzun vade verisi alınamadı; daha sonra yeniden dene.",
+        ) from exc
+    stamp = now_ms()
+    return dict(
+        symbol=symbol,
+        feeds=feeds,
+        as_of=timestamp(stamp).isoformat(),
+        technical=portfolio_technical.technical(db, symbol, stamp),
+        note="Yeni değerlendirme; kayıtlı tarama ve sonuçlar değiştirilmedi.",
+    )
