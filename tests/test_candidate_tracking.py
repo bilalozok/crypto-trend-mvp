@@ -168,3 +168,46 @@ def test_candidate_feed_refresh_security_and_frozen_scan(private_client, monkeyp
         assert db.get(CandidateScan, row_id).payload == frozen
         assert db.query(CandidateOutcome).count() == 0
         assert db.query(CandidateObservation).count() == 0
+
+
+def test_change_summary_regained_unknown_reset_and_exclusive_counts(private_client):
+    with SessionLocal() as db:
+        row = scan(db, symbols=("BTCUSDT", "ETHUSDT", "QIUSDT", "TIAUSDT", "ONGUSDT"))
+        points = [
+            ("BTCUSDT", 1, "ready", True),
+            ("ETHUSDT", 1, "ready", True),
+            ("ETHUSDT", 2, "ready", False),
+            ("QIUSDT", 1, "ready", False),
+            ("QIUSDT", 2, "ready", True),
+            ("QIUSDT", 3, "ready", True),
+            ("ONGUSDT", 1, "ready", False),
+            ("ONGUSDT", 2, "rule_changed", None),
+            ("ONGUSDT", 3, "ready", True),
+        ]
+        for symbol, n, status, value in points:
+            db.add(
+                CandidateObservation(
+                    scan_id=row.id,
+                    symbol=symbol,
+                    close_ms=STAMP + n * BAR,
+                    payload=dict(status=status, qualified=value),
+                )
+            )
+        db.commit()
+        result = overview(db, row, STAMP + 3 * BAR)
+        assert result["change_counts"] == dict(retained=2, absent=1, regained=1, unassessed=1)
+        rows = {r["symbol"]: r for r in result["candidates"]}
+        assert rows["QIUSDT"]["change_label"] == "Yeniden adaylık gözlendi"
+        assert rows["ONGUSDT"]["change_group"] == "retained"
+        db.add(
+            CandidateObservation(
+                scan_id=row.id,
+                symbol="QIUSDT",
+                close_ms=STAMP + 4 * BAR,
+                payload=dict(status="stale_data", qualified=None),
+            )
+        )
+        db.commit()
+        assert overview(db, row, STAMP + 4 * BAR)["change_counts"] == dict(
+            retained=2, absent=1, regained=0, unassessed=2
+        )

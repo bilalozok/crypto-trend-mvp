@@ -90,14 +90,26 @@ def overview(db, scan, stamp):
         timeline = timelines.get(symbol, [])
         previous = None
         changed = None
+        regained = False
         for point in timeline:
             value = point.payload.get("qualified")
             if point.payload.get("status") != "ready" or not isinstance(value, bool):
                 previous = None
+                regained = False
                 continue
             if previous is not None and value != previous:
                 changed = point.close_ms
+                regained = value
             previous = value
+        group = "unassessed"
+        if usable:
+            group = "regained" if qualified and regained else "retained" if qualified else "absent"
+        group_label = {
+            "retained": "Son gözlemde aday",
+            "regained": "Yeniden adaylık gözlendi",
+            "absent": "Son gözlemde aday koşulları yok",
+            "unassessed": "Değerlendirilemedi" if observation else "Gözlem yok",
+        }[group]
         completed, pending, missing, legacy = 0, 0, 0, 0
         for bars in HORIZONS:
             if (symbol, bars) in stored:
@@ -112,6 +124,8 @@ def overview(db, scan, stamp):
             dict(
                 symbol=symbol,
                 label=label,
+                change_group=group,
+                change_label=group_label,
                 observation_count=len(timeline),
                 first_close_time=timestamp(timeline[0].close_ms).isoformat() if timeline else None,
                 last_change_close_time=timestamp(changed).isoformat() if changed else None,
@@ -140,6 +154,10 @@ def overview(db, scan, stamp):
         window_end=timestamp(end).isoformat() if end is not None else None,
         last_observation_close=timestamp(last).isoformat() if last is not None else None,
         candidates=rows,
+        change_counts={
+            key: sum(r["change_group"] == key for r in rows)
+            for key in ("retained", "absent", "regained", "unassessed")
+        },
         totals={
             key: sum(r[key] for r in rows)
             for key in ("stored_completed", "time_pending", "due_not_stored", "legacy_unavailable")
