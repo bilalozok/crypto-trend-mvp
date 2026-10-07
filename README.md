@@ -1095,3 +1095,8 @@ giriş yokken özel içerik gizlenir. Portföy listesi kısa özettir; yorumlar
 coin ayrıntısındadır. Uzun geçmişler ve ikincil formlar açılır bölümlerdedir.
 Tablolar sabit başlık/coin sütunu ve tam sürümü tıklayarak açılan kısa hash
 gösterimi kullanır. Hesaplama ve kayıt kuralları değişmez; migration gerekmez.
+
+
+### Dashboard okunabilirlik düzenlemesi
+
+Oturum açıkken hesap alanı küçük bir durum satırıdır. Coin detayındaki vade yorumları kısa, orta ve uzun vade kartlarında okunur. Veri açıklamaları Nasıl okunur bölümündedir. Adaylarda seçilen taramanın sonuçları önce, taramalar arası değerlendirme ayrı açılır bölümde gösterilir. Hesaplanamayan sonuçların nedeni açılabilir; boş tablolar yerine açıklama görünür. Teknik fiyatlarda sekiz anlamlı basamak gösterilir; tam değer odaklanabilir değerin açıklamasında korunur. Hesaplamalar ve kayıt kuralları değişmez.
