@@ -1142,3 +1142,5 @@ Aday takip durumunda dört coin özeti gösterilir: son gözlemde aday, koşulla
 Aday durum kartları tabloyu filtreler; aynı karta tekrar basmak veya Tüm adaylar düğmesi filtreyi kaldırır. Filtre aynı taramanın yenilenmesinde korunur, başka tarama açınca ve çıkışta sıfırlanır. Kartlar/sonuç sayıları tüm seçilen taramayı temsil eder; filtre yalnızca coin satırlarını daraltır.
 
 Kayıtlı aday taraması listesi coin (yalnızca saklanan adaylar), Türkiye tarih/saat aralığı ve takip türüne göre veritabanında filtrelenir; filtreler sayfalama öncesinde uygulanır. Tarih oluşturulma zamanı içindir, başlangıç dahil/bitiş hariçtir. Kayıt sahipliği korunur. Takip başlangıcı olan/açık/bitmiş/eski sınıfları worker sağlık veya sonuç tamamlama göstergesi değildir. Arşiv değişmez; migration gerekmez.
+
+Kayıtlı taramada 4h/1d hazırlama düğmesi coin adının hemen altında, sabit coin sütununda gösterilir. İzlenecek adım açıklaması açılır hücrede tutulur ve genişliği sınırlandırılır; uzun metin işlem düğmesini sağ kenara itmez.
