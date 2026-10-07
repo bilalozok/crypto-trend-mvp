@@ -1112,3 +1112,8 @@ Portföy ve kayıtlı adayların vade göstergeleri yeşil Alımı değerlendir,
 ### Worker kısmi başarı ve hata logları
 
 Bir turda başarılı coinler varsa ve yalnızca tekil Binance veri alma hataları oluşmuşsa worker `outcome=partial` ve exit 0 ile tamamlanır. Hatalı pariteler silinmez; last_attempt_ms/last_error kaydı korunur ve sonraki planlı turda yeniden denenir. Başarısız mumlar yazılmaz ve geçerli veri sayılmaz. Tüm coinlerin başarısız olduğu, erişim/rate limit nedeniyle durdurulan veya veritabanı/takip işlemi hatası olan turlar exit 1 ile kapanır. Özet attempted/success/failed/deferred yanında outcome ve hard_failures içerir. Hata logları sabit reason etiketi, varsa HTTP durum kodu ve uygulama hata durum kodunu içerir; ham yanıt, URL veya kimlik bilgisi yazılmaz. Migration gerekli değildir.
+
+
+### Yönetici parola işlemleri
+
+Yeni kullanıcı ve parola değiştirme alanlarında Göster/Gizle yalnızca o anda girilen metnin görünürlüğünü değiştirir. Mevcut parolalar okunamaz; liste veya API yanıtları parolayı/özetini döndürmez. bilalozok POST `/account/admin/users/password` ile mevcut bir hesabın parolasını değiştirebilir. Origin, CSRF ve yönetici yetkisi zorunludur. Yeni scrypt özeti ve o kullanıcının bütün oturumlarının iptali aynı veritabanı işleminde kaydedilir. Olmayan kullanıcı için hesap oluşturulmaz; aktiflik ve alış kayıtları korunur. Yönetici kendi parolasını değiştirirse tekrar giriş yapması gerekir. İşlem sonrası parola alanları temizlenir ve maskelenir. Migration gerekmez.

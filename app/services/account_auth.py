@@ -88,7 +88,8 @@ def reserve_login(db, username, stamp):
 
 def login(db, username, password, stamp):
     reserve_login(db, username, stamp)
-    account = db.scalar(select(Account).where(Account.username == username))
+    # Serialize password verification/session creation with administrator resets.
+    account = db.scalar(select(Account).where(Account.username == username).with_for_update())
     if not HASH_SLOTS.acquire(blocking=False):
         raise HTTPException(status_code=429, detail="Giriş işlemi meşgul; biraz sonra tekrar dene.")
     try:

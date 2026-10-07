@@ -694,3 +694,26 @@ def add_account(data: NewAccountInput, request: Request, db: Db):
     finally:
         account_auth.HASH_SLOTS.release()
     return dict(username=username, active=True)
+
+
+@router.post("/admin/users/password")
+def reset_account_password(data: NewAccountInput, request: Request, db: Db):
+    admin = administrator(db, request, mutate=True)
+    target = db.scalar(
+        select(Account).where(Account.username == data.username.lower()).with_for_update()
+    )
+    if target is None:
+        raise HTTPException(
+            status_code=404, detail="Kullanıcı bulunamadı; yeni hesap oluşturulmadı."
+        )
+    if not account_auth.HASH_SLOTS.acquire(blocking=False):
+        raise HTTPException(status_code=429, detail="Hesap işlemi meşgul; biraz sonra dene.")
+    try:
+        target.password_hash = account_auth.password_hash(data.password)
+        db.execute(delete(AccountSession).where(AccountSession.account_id == target.id))
+        changed_self = target.id == admin.id
+        username = target.username
+        db.commit()
+    finally:
+        account_auth.HASH_SLOTS.release()
+    return dict(username=username, password_changed=True, reauthenticate=changed_self)
