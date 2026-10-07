@@ -717,3 +717,11 @@ def reset_account_password(data: NewAccountInput, request: Request, db: Db):
     finally:
         account_auth.HASH_SLOTS.release()
     return dict(username=username, password_changed=True, reauthenticate=changed_self)
+
+
+@router.get("/candidate-scans/{scan_id}/tracking")
+def candidate_tracking_status(scan_id: UUID, request: Request, db: Db):
+    from app.services.candidate_tracking import overview
+
+    row = require_candidate_scan(db, current(db, request).id, scan_id)
+    return overview(db, row, now_ms())

@@ -1117,3 +1117,8 @@ Bir turda başarılı coinler varsa ve yalnızca tekil Binance veri alma hatalar
 ### Yönetici parola işlemleri
 
 Yeni kullanıcı ve parola değiştirme alanlarında Göster/Gizle yalnızca o anda girilen metnin görünürlüğünü değiştirir. Mevcut parolalar okunamaz; liste veya API yanıtları parolayı/özetini döndürmez. bilalozok POST `/account/admin/users/password` ile mevcut bir hesabın parolasını değiştirebilir. Origin, CSRF ve yönetici yetkisi zorunludur. Yeni scrypt özeti ve o kullanıcının bütün oturumlarının iptali aynı veritabanı işleminde kaydedilir. Olmayan kullanıcı için hesap oluşturulmaz; aktiflik ve alış kayıtları korunur. Yönetici kendi parolasını değiştirirse tekrar giriş yapması gerekir. İşlem sonrası parola alanları temizlenir ve maskelenir. Migration gerekmez.
+
+
+### Aday takip durumu
+
+Seçilen taramada GET `/account/candidate-scans/{scan_id}/tracking` yalnızca sahibi için saklanmış son gözlemleri ve tamamlanan sonuçları özetler. Eski kayıt, adaysız tarama, giriş bekleniyor, ilk kapanış bekleniyor, açık/bitmiş 24 saatlik pencere ayrılır. Her coin için son gözlenen aday durumu, kapanış ve gözlem zamanı gösterilir. Hazır olmayan veya farklı kural sürümlü kayıt aday kaybı sayılmaz. Dört horizonun saklanmış tamamlanan, süre bekleyen ve süresi dolmuş fakat henüz saklanmamış sayıları ayrı tutulur. Önizlemede hesaplanan ama saklanmayan sonuç tamamlanmış saklı kayıt sayılmaz. Worker etkinliği bu ekranla kesin doğrulanamaz; son beklenen kapanışta kayıt yokluğu belirtilir, geçmiş gözlemler üretilmez. Yenileme salt okunurdur; migration gerekmez.
