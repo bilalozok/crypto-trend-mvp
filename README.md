@@ -1130,3 +1130,9 @@ Kayıtlı aday rozetleri tarama anını belirtir. Takip özeti ilk gözlem, son 
 Seçilen taramanın aday coininde 4h/1d hazırlama işlemi oturum, sahiplik ve CSRF kontrolüyle mevcut sınırlı veri yenileyiciyi kullanır. Yeni teknik değerlendirme ayrı gösterilir; tarama ve sonuç kayıtları değişmez. Bu işlem yalnızca seçilen coini yeniler; otomatik sürekli takip başlatmaz. Migration gerekmez.
 
 Adayın güncel vade değerlendirmesinde izlenecek yapı ve takip adımı gösterilir. Ayrı USDT seviye tablosu yalnızca hazır vadelerin mevcut aktif/oluşan koşullarını kullanır; eski/geçersiz teyitleri aktif seviye olarak sunmaz. Analiz kuralları ve arşivler değiştirilmez.
+
+### Otomatik aday vade verileri
+
+Worker için `CANDIDATE_TIMEFRAMES_ENABLED=true` etkinleştirilince aktif kullanıcıların varsayımsal girişten itibaren 24 saatlik penceresi açık kayıtlı adaylarının 4h/1d verileri yenilenir. Varsayılan kapalıdır. Eski, giriş zamanı gelmemiş, penceresi bitmiş ve aktif olmayan pariteler alınmaz. Portföy ve aday listeleri birleştirilir; aynı coin bir turda bir kez yenilenir. Mevcut önbellek, dakika başına rezervasyon ve worker bütçesi korunur; bütçe nedeniyle ertelenen coin sonraki turda denenir. Kayıtlı taramalar/sonuçlar değiştirilmez. Yeni tarama, hazırlanmış güncel verileri kullanabilir; bütün piyasanın üç vade verilerinin hazır olması garanti edilmez.
+
+Loglar: `candidate_timeframes_eligible symbols=N`, başarıda `candidate_timeframes_complete symbol=...`; hata mevcut `portfolio_timeframes_failed` kaydındadır. Migration gerekmez.

@@ -66,6 +66,13 @@ def collect_market(budget=180, workers=4, limit=500):
         with SessionLocal() as db:
             portfolio_symbols = set(owned_symbols(db))
 
+    from app.services.candidate_feeds import tracked_symbols
+
+    with SessionLocal() as db:
+        candidate_symbols = tracked_symbols(db, now_ms())
+    logger.info("candidate_timeframes_eligible symbols=%s", len(candidate_symbols))
+    portfolio_symbols.update(candidate_symbols)
+
     def fetch(symbol):
         hard_failure = False
         try:
@@ -120,6 +127,8 @@ def collect_market(budget=180, workers=4, limit=500):
                     with SessionLocal() as db:
                         refresh_timeframes(db, symbol, now_ms())
                     logger.info("portfolio_timeframes_complete symbol=%s", symbol)
+                    if symbol in candidate_symbols:
+                        logger.info("candidate_timeframes_complete symbol=%s", symbol)
                 except Exception as exc:
                     hard_failure = True
                     logger.error(
