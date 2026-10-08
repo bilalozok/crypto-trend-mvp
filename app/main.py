@@ -532,3 +532,13 @@ async def private_cache_headers(request, call_next):
         response.headers["Cache-Control"] = "no-store"
         response.headers["Pragma"] = "no-cache"
     return response
+
+
+@app.get("/analysis/binance/early-formations")
+def early_formations(db: DbDep):
+    from app.services.formation_early import listing
+
+    try:
+        return listing(db, now_ms())
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=503, detail="Early formation data unavailable") from exc

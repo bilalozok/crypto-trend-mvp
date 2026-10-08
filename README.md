@@ -1146,3 +1146,7 @@ Kayıtlı aday taraması listesi coin (yalnızca saklanan adaylar), Türkiye tar
 Kayıtlı taramada 4h/1d hazırlama düğmesi coin adının hemen altında, sabit coin sütununda gösterilir. İzlenecek adım açıklaması açılır hücrede tutulur ve genişliği sınırlandırılır; uzun metin işlem düğmesini sağ kenara itmez.
 
 Genel ileriye dönük sonuçlarda formasyon adına basmak seçilen formasyon/süre için özetin dönemi, kural sürümü ve gözlem zamanına uyan geçmiş coin sinyallerini sayfalı olarak açar. Sonuçlar son saklanan haliyle okunur; özetten sonra tamamlanmış olabilir. Güncel formasyon eşleşmesi değildir. Coin düğmesi mevcut güncel grafik akışını kullanır. Sinyaller tekil coinlerden farklı sayılabilir; bekleyen/geçersiz sonuçlar sıfır sayılmaz. Migration gerekmez.
+
+### Tek mumluk erken oluşum uyarıları
+
+Formasyon taramasındaki erken uyarı alanı mevcut değişmez formasyon geçmişini okur. Yapı `forming` durumunda ve `structure_available_at` gözlenen 15m kapanışına eşitse gösterilir. Güncel durum aynı yapıyı korumalıdır; eski, gelecekteki, geç kaydedilmiş ve geçersizleşmiş yapılar gösterilmez. Sonraki kapanışta uyarı sona erer. Yükseliş ve düşüş kapsanır. Otomatik ekran kontrolü isteğe bağlıdır ve görünür ekranda 30 saniyede bir çalışır; dış bildirim gönderilmez. Worker formasyon geçmişini toplamalıdır. Yeni migration veya worker değişkeni gerekmez. Üç sağ mumluk pivot kuralı korunur; hareketin başlangıcından önce bildirim veya 15 dakika içinde teslim garantisi verilmez.
