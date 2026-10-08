@@ -40,3 +40,8 @@ def test_single_login_and_private_workspace_structure(client):
     assert "candidate-pane-results" in layout.parents["candidate-study-table"]
     assert "candidate-pane-history" in layout.parents["candidate-lifecycle-table"]
     assert 'id="private-workspace-content" hidden' in html
+
+    assert "workspace-admin" in layout.parents["admin-area"]
+    assert "workspace-private" not in layout.parents["admin-area"]
+    assert 'id="workspace-tab-admin"' in html
+    assert 'id="account-center" class="account-center" hidden' in html
