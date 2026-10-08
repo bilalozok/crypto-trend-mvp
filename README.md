@@ -1150,3 +1150,7 @@ Genel ileriye dönük sonuçlarda formasyon adına basmak seçilen formasyon/sü
 ### Tek mumluk erken oluşum uyarıları
 
 Formasyon taramasındaki erken uyarı alanı mevcut değişmez formasyon geçmişini okur. Yapı `forming` durumunda ve `structure_available_at` gözlenen 15m kapanışına eşitse gösterilir. Güncel durum aynı yapıyı korumalıdır; eski, gelecekteki, geç kaydedilmiş ve geçersizleşmiş yapılar gösterilmez. Sonraki kapanışta uyarı sona erer. Yükseliş ve düşüş kapsanır. Otomatik ekran kontrolü isteğe bağlıdır ve görünür ekranda 30 saniyede bir çalışır; dış bildirim gönderilmez. Worker formasyon geçmişini toplamalıdır. Yeni migration veya worker değişkeni gerekmez. Üç sağ mumluk pivot kuralı korunur; hareketin başlangıcından önce bildirim veya 15 dakika içinde teslim garantisi verilmez.
+
+### Kişisel özet dashboard
+
+Özel takipte varsayılan Özet sekmesi giriş gerektirir. Kullanıcının alış coinlerini, son kayıtlı taramasını ve bu coinlere ait tek mumluk yükseliş/düşüş oluşumlarını gösterir. Portföy matrisi 10 coinlik sayfalara ayrılır; dikkat listesi gösterilen sayfaya aittir. Aday ve sonuç sayıları yalnızca son kayıtlı taramaya aittir. Erken uyarılar bütün alış coinleri ve son taramanın adaylarıyla eşleştirilir, görünür ekranda 30 saniyede bir hafif okuma ile güncellenir ve süresi dolunca kaldırılır. Piyasa verisi indirilmez, kayıt oluşturulmaz. Migration veya yeni worker ayarı gerekmez.

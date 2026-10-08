@@ -766,3 +766,18 @@ def refresh_candidate_timeframes(
         technical=portfolio_technical.technical(db, symbol, stamp),
         note="Yeni değerlendirme; kayıtlı tarama ve sonuçlar değiştirilmedi.",
     )
+
+
+@router.get("/dashboard")
+def personal_dashboard(request: Request, db: Db, offset: int = Query(0, ge=0)):
+    from app.services.personal_dashboard import summary
+
+    account = current(db, request)
+    return summary(db, account.id, now_ms(), offset)
+
+
+@router.get("/dashboard/early")
+def personal_early_dashboard(request: Request, db: Db):
+    from app.services.personal_dashboard import early_summary
+
+    return early_summary(db, current(db, request).id, now_ms())
