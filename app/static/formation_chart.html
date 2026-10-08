@@ -33,7 +33,7 @@ small{color:#526172}#reason{margin-bottom:0}
 <div id="tooltip" aria-live="polite"></div>
 <dl id="details"></dl><p id="reason"></p>
 </section>
-<p><small>Deneysel geometrik kurallar. Grafik olasılık veya emir üretmez. Teyit durumu geçmiş kırılımı ifade eder; son kapanış ayrıca değerlendirilir. Seviyeler mum kapanışı ve teyit payıyla kontrol edilir. Tüm saatler UTC.</small></p>
+<p><small>Deneysel geometrik kurallar. Grafik olasılık veya emir üretmez. Teyit durumu geçmiş kırılımı ifade eder; son kapanış ayrıca değerlendirilir. Seviyeler mum kapanışı ve teyit payıyla kontrol edilir. Tüm saatler Türkiye saatidir (Europe/Istanbul).</small></p>
 </main>
 <script>
 "use strict";
@@ -42,7 +42,7 @@ let data=null, sequence=0;
 const states={forming:"Oluşuyor",confirmed:"Teyitli",invalidated:"Geçersiz",not_detected:"Tespit edilmedi"};
 const quality={ready:"Güncel",stale_data:"Veri eski: formasyon analizi bastırıldı",missing_data:"Mum boşluğu var: analiz bastırıldı",insufficient_data:"200 mum henüz tamamlanmadı",invalid_data:"Geçersiz veri: grafik ve analiz bastırıldı"};
 const format=v=>v==null?"—":Number(v).toLocaleString("tr-TR",{maximumSignificantDigits:8});
-const time=v=>new Date(v).toISOString().slice(0,16).replace("T"," ");
+const time=v=>new Intl.DateTimeFormat("tr-TR",{timeZone:"Europe/Istanbul",day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).format(new Date(v));
 function add(tag,attrs,parent=el("chart")){const n=document.createElementNS(NS,tag);for(const [k,v]of Object.entries(attrs))n.setAttribute(k,String(v));parent.append(n);return n}
 function text(value,x,y,color="#526172"){const n=add("text",{x,y,fill:color,"font-size":12});n.textContent=value;return n}
 function detail(label,value){const box=document.createElement("div"),dt=document.createElement("dt"),dd=document.createElement("dd");dt.textContent=label;dd.textContent=value;box.append(dt,dd);el("details").append(box)}
@@ -81,7 +81,7 @@ function draw(){
   detail("Hacim oranı",p.volume_ratio==null?"—":format(p.volume_ratio)+"×");detail("Son kapanış",format(p.last_close));if(p.flag_retracement_ratio!=null)detail("Bayrak geri çekilmesi",format(p.flag_retracement_ratio*100)+"%");
   detail("Eşiği koruyor",p.breakout_holding==null?"—":p.breakout_holding?"Evet":"Hayır");
  }
- svg.onpointermove=event=>{const bounds=svg.getBoundingClientRect(),px=(event.clientX-bounds.left)*1100/bounds.width;const i=Math.max(0,Math.min(rows.length-1,Math.floor((px-left)/step)));const r=rows[i];el("tooltip").textContent=time(r.open_time)+" UTC · O "+format(r.open)+" · H "+format(r.high)+" · L "+format(r.low)+" · C "+format(r.close)+" · V "+format(r.volume)};
+ svg.onpointermove=event=>{const bounds=svg.getBoundingClientRect(),px=(event.clientX-bounds.left)*1100/bounds.width;const i=Math.max(0,Math.min(rows.length-1,Math.floor((px-left)/step)));const r=rows[i];el("tooltip").textContent=time(r.open_time)+" TR · O "+format(r.open)+" · H "+format(r.high)+" · L "+format(r.low)+" · C "+format(r.close)+" · V "+format(r.volume)};
 }
 async function load(){
  const token=++sequence,symbol=el("symbol").value.trim().toUpperCase();
@@ -92,7 +92,7 @@ async function load(){
   const response=await fetch("/analysis/binance/chart-data?symbol="+encodeURIComponent(symbol),{signal:AbortSignal.timeout(60000)});
   if(!response.ok)throw new Error(response.status===404?"Aktif parite bulunamadı.":"Veri alınamadı (HTTP "+response.status+").");
   const result=await response.json();if(token!==sequence)return;data=result;
-  el("status").textContent=symbol+" · "+(quality[data.status]||data.status)+" · "+data.candles_used+" mum · Sorgu "+time(data.as_of)+" UTC";
+  el("status").textContent=symbol+" · "+(quality[data.status]||data.status)+" · "+data.candles_used+" mum · Sorgu "+time(data.as_of)+" Türkiye saati";
   el("status").dataset.error=String(data.status!=="ready");
   data.patterns.forEach((p,i)=>{const o=document.createElement("option");o.value=i;o.textContent=p.name+" · "+states[p.status];el("pattern").append(o)});
   const found=data.patterns.findIndex(p=>p.status!=="not_detected");if(found>=0)el("pattern").value=found;
