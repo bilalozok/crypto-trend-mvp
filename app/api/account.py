@@ -781,3 +781,14 @@ def personal_early_dashboard(request: Request, db: Db):
     from app.services.personal_dashboard import early_summary
 
     return early_summary(db, current(db, request).id, now_ms())
+
+
+@router.get("/dashboard/returns")
+def dashboard_returns(request: Request, db: Db):
+    from app.services.dashboard_returns import summary
+
+    account = current(db, request)
+    try:
+        return summary(db, account.id, now_ms())
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc

@@ -1154,3 +1154,7 @@ Formasyon taramasındaki erken uyarı alanı mevcut değişmez formasyon geçmi�
 ### Kişisel özet dashboard
 
 Özel takipte varsayılan Özet sekmesi giriş gerektirir. Kullanıcının alış coinlerini, son kayıtlı taramasını ve bu coinlere ait tek mumluk yükseliş/düşüş oluşumlarını gösterir. Portföy matrisi 10 coinlik sayfalara ayrılır; dikkat listesi gösterilen sayfaya aittir. Aday ve sonuç sayıları yalnızca son kayıtlı taramaya aittir. Erken uyarılar bütün alış coinleri ve son taramanın adaylarıyla eşleştirilir, görünür ekranda 30 saniyede bir hafif okuma ile güncellenir ve süresi dolunca kaldırılır. Piyasa verisi indirilmez, kayıt oluşturulmaz. Migration veya yeni worker ayarı gerekmez.
+
+### Özet ekranında USDT alış getirileri
+
+Komisyon dahil maliyet, son beklenen kapanmış 15m fiyatıyla varsayımsal değer ve gerçekleşmemiş kâr/zarar gösterilir. Satışlar düşülmez. Son 24 saat ve 7 gün farkı, bugünkü kâr/zarardan ilgili kapanıştaki kâr/zararı çıkarır; yeni alışların fiyat ve komisyonu dahil edilir. Grafik son sekiz günlük eş saatli kapanışı kullanır, o noktaya kadar alınmış coinleri değerlendirir. Eksik veya geçersiz kapanışlar doldurulmaz; eksik bileşen varsa toplam da boş kalır. TL alışları hariç tutulur. Veritabanı okunur, dış veri indirilmez; migration gerekmez.
