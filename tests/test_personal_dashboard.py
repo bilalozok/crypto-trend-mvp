@@ -52,6 +52,12 @@ def test_dashboard_requires_login_and_isolates_portfolio_scans_and_alerts(
     data = private_client.get("/account/dashboard").json()
     assert data["scan_id"] is None and data["alerts"] == []
     assert data["portfolio_total"] == 0
+    market = private_client.get("/account/dashboard/early?scope=market")
+    assert {a["symbol"] for a in market.json()["alerts"]} == {"BTCUSDT", "ETHUSDT", "OTHERUSDT"}
+    assert private_client.get("/account/dashboard/early?scope=invalid").status_code == 422
+    assert private_client.get("/account/dashboard?early_scope=invalid").status_code == 422
+    assert len(private_client.get("/account/dashboard?early_scope=market").json()["alerts"]) == 3
+
     headers = auth(private_client)
     assert (
         private_client.post(

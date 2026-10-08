@@ -1166,3 +1166,5 @@ Ana adres oturumsuz kullanıcıyı `/login` ekranına yönlendirir; giriş sonra
 Kullanıcı oluşturma, listeleme, parola sıfırlama ve kalıcı silme yalnızca `bilalozok` hesabına açıktır. Silme kullanıcı adı yazılarak onaylanır; hesabın oturumları ve kişisel alış, tarama, sonuç ve gözlem kayıtları tek işlemde silinir. Ortak piyasa verileri korunur. `bilalozok` silinemez.
 
 Kullanıcı yönetimi üst gezintide yalnızca bilalozok hesabının gördüğü Yönetim sekmesindedir. Özel takip içindeki yinelenen oturum/çıkış kutusu gösterilmez; çıkış üst panelden yapılır. Yönetim sekmesi klavyeyle gezilebilir; yetkisiz hesaplar admin adresinde kişisel Özete yönlendirilir. Sunucu yetki kontrolleri korunur.
+
+Özette erken oluşumlar için Kişisel coinler/Piyasa geneli kapsamı seçilebilir. Kartlar ve liste aynı kapsama aittir; kapsam değişimi eski istek sonuçlarının yeni listeye yazılmasını engeller. Piyasa geneli mevcut formasyon geçmişini okur, yeni tarama veya Binance isteği başlatmaz. Giriş koruması ve tek mumluk süre korunur.

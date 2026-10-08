@@ -769,18 +769,25 @@ def refresh_candidate_timeframes(
 
 
 @router.get("/dashboard")
-def personal_dashboard(request: Request, db: Db, offset: int = Query(0, ge=0)):
+def personal_dashboard(
+    request: Request,
+    db: Db,
+    offset: int = Query(0, ge=0),
+    early_scope: Literal["personal", "market"] = "personal",
+):
     from app.services.personal_dashboard import summary
 
     account = current(db, request)
-    return summary(db, account.id, now_ms(), offset)
+    return summary(db, account.id, now_ms(), offset, early_scope)
 
 
 @router.get("/dashboard/early")
-def personal_early_dashboard(request: Request, db: Db):
+def personal_early_dashboard(
+    request: Request, db: Db, scope: Literal["personal", "market"] = "personal"
+):
     from app.services.personal_dashboard import early_summary
 
-    return early_summary(db, current(db, request).id, now_ms())
+    return early_summary(db, current(db, request).id, now_ms(), scope)
 
 
 @router.get("/dashboard/returns")

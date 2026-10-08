@@ -8,7 +8,7 @@ from app.services import candidate_tracking, formation_early, portfolio_technica
 from app.services.formations import timestamp
 
 
-def summary(db, account_id, stamp, offset=0):
+def summary(db, account_id, stamp, offset=0, early_scope="personal"):
     symbols = db.scalars(
         select(Purchase.symbol)
         .where(Purchase.account_id == account_id)
@@ -24,7 +24,7 @@ def summary(db, account_id, stamp, offset=0):
         .limit(1)
     )
     tracking = candidate_tracking.overview(db, scan, stamp) if scan else None
-    alerts = early_summary(db, account_id, stamp)["alerts"]
+    alerts = early_summary(db, account_id, stamp, early_scope)["alerts"]
     attention = []
     for coin in coins:
         for horizon in coin["horizons"]:
@@ -50,7 +50,9 @@ def summary(db, account_id, stamp, offset=0):
     )
 
 
-def early_summary(db, account_id, stamp):
+def early_summary(db, account_id, stamp, scope="personal"):
+    if scope == "market":
+        return formation_early.listing(db, stamp)
     symbols = set(
         db.scalars(select(Purchase.symbol).where(Purchase.account_id == account_id)).all()
     )
