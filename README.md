@@ -1158,3 +1158,9 @@ Formasyon taramasındaki erken uyarı alanı mevcut değişmez formasyon geçmi�
 ### Özet ekranında USDT alış getirileri
 
 Komisyon dahil maliyet, son beklenen kapanmış 15m fiyatıyla varsayımsal değer ve gerçekleşmemiş kâr/zarar gösterilir. Satışlar düşülmez. Son 24 saat ve 7 gün farkı, bugünkü kâr/zarardan ilgili kapanıştaki kâr/zararı çıkarır; yeni alışların fiyat ve komisyonu dahil edilir. Grafik son sekiz günlük eş saatli kapanışı kullanır, o noktaya kadar alınmış coinleri değerlendirir. Eksik veya geçersiz kapanışlar doldurulmaz; eksik bileşen varsa toplam da boş kalır. TL alışları hariç tutulur. Veritabanı okunur, dış veri indirilmez; migration gerekmez.
+
+### Uygulama genelinde giriş zorunluluğu
+
+Ana adres oturumsuz kullanıcıyı `/login` ekranına yönlendirir; giriş sonrası kişisel Özet açılır. Tüm analiz, grafik, indirme, API ve dokümantasyon uçları aktif hesap/oturum gerektirir. Yalnızca giriş ekranı, giriş POST'u ve veri içermeyen `/health` kontrolü açıktır. Yazma işlemleri oturum yanında CSRF kontrolü gerektirir. Bütün HTTP yanıtları no-store döner. Mevcut HTTPS güvenli oturum çerezi, hesaplar ve parola sıfırlamada oturum iptali korunur. Yeni hesaplar bilalozok yönetimiyle oluşturulur, genel kayıt yoktur. Worker doğrudan veritabanından çalışır; yeni ayar ve migration gerekmez.
+
+Kullanıcı oluşturma, listeleme, parola sıfırlama ve kalıcı silme yalnızca `bilalozok` hesabına açıktır. Silme kullanıcı adı yazılarak onaylanır; hesabın oturumları ve kişisel alış, tarama, sonuç ve gözlem kayıtları tek işlemde silinir. Ortak piyasa verileri korunur. `bilalozok` silinemez.

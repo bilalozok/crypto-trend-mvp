@@ -34,5 +34,32 @@ def cleanup_db_file():
 
 @pytest.fixture()
 def client():
-    with TestClient(app) as test_client:
+    from uuid import uuid4
+
+    from app.db.models.account import Account, AccountSession
+    from app.db.session import SessionLocal
+    from app.services import account_auth
+
+    token = "analysis-test-session"
+    with SessionLocal() as db:
+        owner = str(uuid4())
+        db.add(
+            Account(
+                id=owner,
+                username="analysis_test",
+                password_hash="unused-test-hash",
+                active=True,
+                created_ms=0,
+            )
+        )
+        db.flush()
+        db.add(
+            AccountSession(
+                token_hash=account_auth.digest(token), account_id=owner, expires_ms=2**62
+            )
+        )
+        db.commit()
+    with TestClient(app, base_url="https://testserver") as test_client:
+        test_client.cookies.set(account_auth.COOKIE, token)
+        test_client.headers["X-CSRF-Token"] = account_auth.csrf_token(token)
         yield test_client

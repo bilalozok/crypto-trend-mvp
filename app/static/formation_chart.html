@@ -36,6 +36,7 @@ small{color:#526172}#reason{margin-bottom:0}
 <p><small>Deneysel geometrik kurallar. Grafik olasılık veya emir üretmez. Teyit durumu geçmiş kırılımı ifade eder; son kapanış ayrıca değerlendirilir. Seviyeler mum kapanışı ve teyit payıyla kontrol edilir. Tüm saatler Türkiye saatidir (Europe/Istanbul).</small></p>
 </main>
 <script>
+window.addEventListener("pageshow",e=>{if(e.persisted)location.reload()});
 "use strict";
 const el=id=>document.getElementById(id), NS="http://www.w3.org/2000/svg";
 let data=null, sequence=0;
@@ -90,7 +91,7 @@ async function load(){
  data=null;el("pattern").replaceChildren();el("chart").replaceChildren();el("details").replaceChildren();el("reason").textContent="";el("tooltip").textContent="";
  try{
   const response=await fetch("/analysis/binance/chart-data?symbol="+encodeURIComponent(symbol),{signal:AbortSignal.timeout(60000)});
-  if(!response.ok)throw new Error(response.status===404?"Aktif parite bulunamadı.":"Veri alınamadı (HTTP "+response.status+").");
+  if(response.status===401){window.top.location.replace("/login");throw Error("Oturum sona ermiş; tekrar giriş yap.")}if(!response.ok)throw new Error(response.status===404?"Aktif parite bulunamadı.":"Veri alınamadı (HTTP "+response.status+").");
   const result=await response.json();if(token!==sequence)return;data=result;
   el("status").textContent=symbol+" · "+(quality[data.status]||data.status)+" · "+data.candles_used+" mum · Sorgu "+time(data.as_of)+" Türkiye saati";
   el("status").dataset.error=String(data.status!=="ready");

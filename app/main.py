@@ -51,8 +51,10 @@ def on_startup() -> None:
 
 
 @app.get("/")
-def root() -> dict:
-    return {"ok": True, "service": "crypto-trend-mvp"}
+def root():
+    from starlette.responses import RedirectResponse
+
+    return RedirectResponse("/analysis/binance/dashboard?tab=overview", status_code=303)
 
 
 @app.get("/health")
@@ -519,18 +521,80 @@ def download_forward_report(report_id: UUID, db: DbDep):
     )
 
 
-# Public analysis stays available; all /account data routes enforce ownership.
+# Every application route requires an active, revocable account session.
 from app.api.account import router as account_router  # noqa: E402
 
 app.include_router(account_router)
 
 
+@app.get("/login", include_in_schema=False)
+def login_page():
+    from pathlib import Path
+
+    from starlette.responses import FileResponse
+
+    return FileResponse(Path(__file__).resolve().parent / "static" / "login.html")
+
+
 @app.middleware("http")
-async def private_cache_headers(request, call_next):
+async def application_access(request, call_next):
+    from urllib.parse import quote
+
+    from starlette.concurrency import run_in_threadpool
+    from starlette.responses import JSONResponse, RedirectResponse
+
+    from app.api.account import current
+
+    public = (request.method, request.url.path) in {
+        ("GET", "/login"),
+        ("POST", "/account/login"),
+        ("GET", "/health"),
+    }
+    if not public:
+
+        def authenticate():
+            with SessionLocal() as db:
+                current(
+                    db,
+                    request,
+                    mutate=request.method not in ("GET", "HEAD", "OPTIONS")
+                    and not request.url.path.startswith("/account/"),
+                )
+
+        try:
+            await run_in_threadpool(authenticate)
+        except HTTPException as exc:
+            pages = {
+                "/",
+                "/analysis/binance/dashboard",
+                "/analysis/binance/chart",
+                "/docs",
+                "/redoc",
+            }
+            if (
+                exc.status_code == 401
+                and request.method in ("GET", "HEAD")
+                and request.url.path in pages
+            ):
+                destination = request.url.path
+                if request.url.query:
+                    destination += "?" + request.url.query
+                response = RedirectResponse(
+                    "/login?next=" + quote(destination, safe=""), status_code=303
+                )
+            else:
+                response = JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
+            response.headers["Cache-Control"] = "no-store"
+            return response
+        except SQLAlchemyError:
+            return JSONResponse(
+                {"detail": "Oturum doğrulanamadı; daha sonra yeniden dene."},
+                status_code=503,
+                headers={"Cache-Control": "no-store"},
+            )
     response = await call_next(request)
-    if request.url.path.startswith("/account/"):
-        response.headers["Cache-Control"] = "no-store"
-        response.headers["Pragma"] = "no-cache"
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Pragma"] = "no-cache"
     return response
 
 

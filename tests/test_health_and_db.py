@@ -1,8 +1,7 @@
 def test_root(client):
-    r = client.get("/")
-    assert r.status_code == 200
-    data = r.json()
-    assert isinstance(data, dict)
+    r = client.get("/", follow_redirects=False)
+    assert r.status_code == 303
+    assert r.headers["location"] == "/analysis/binance/dashboard?tab=overview"
 
 
 def test_health(client):

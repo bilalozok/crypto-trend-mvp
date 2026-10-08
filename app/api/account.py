@@ -792,3 +792,35 @@ def dashboard_returns(request: Request, db: Db):
         return summary(db, account.id, now_ms())
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+class DeleteAccountInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    confirm_username: str = Field(min_length=1, max_length=32, pattern=r"^[a-zA-Z0-9_.-]+$")
+
+
+@router.delete("/admin/users/{username}")
+def delete_account(username: str, data: DeleteAccountInput, request: Request, db: Db):
+    from app.db.models.candidate_observation import CandidateObservation
+    from app.db.models.candidate_outcome import CandidateOutcome
+    from app.db.models.candidate_scan import CandidateScan
+    from app.db.models.portfolio_observation import PortfolioObservation
+    from app.db.models.portfolio_snapshot import PortfolioSnapshot
+
+    administrator(db, request, mutate=True)
+    username = username.lower()
+    if username == "bilalozok":
+        raise HTTPException(status_code=403, detail="Sistem yöneticisi bilalozok silinemez.")
+    if data.confirm_username.lower() != username:
+        raise HTTPException(status_code=422, detail="Silme onayı kullanıcı adıyla eşleşmiyor.")
+    target = db.scalar(select(Account).where(Account.username == username).with_for_update())
+    if target is None:
+        raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı.")
+    scans = select(CandidateScan.id).where(CandidateScan.account_id == target.id)
+    for model in (CandidateObservation, CandidateOutcome):
+        db.execute(delete(model).where(model.scan_id.in_(scans)))
+    for model in (CandidateScan, PortfolioObservation, PortfolioSnapshot, Purchase, AccountSession):
+        db.execute(delete(model).where(model.account_id == target.id))
+    db.delete(target)
+    db.commit()
+    return dict(username=username, deleted=True)
