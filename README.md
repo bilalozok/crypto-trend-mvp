@@ -1174,3 +1174,5 @@ Dashboard kompakt analiz panelleri kullanır: özet grafikleri ana alanda, erken
 Özet ekranında takip sayaçları kompakt satırlarda, kâr/zarar değerleri yön rengiyle gösterilir. Coin raporu açılabilir takip açıklamaları içeren formasyon kartlarını kullanır; özetin uzun okuma notları açılır alandadır.
 
 Özet tabloları grafiklerin bulunduğu sütunda kesintisiz devam eder; sağdaki takip panelinin yüksekliği tabloları aşağı itmez. Coin grafikleri kayıt sayısına göre doğal yüksekliğini korur.
+
+Özet tek tam genişlikli akış kullanır: grafikler, yan yana uyarı/takip panelleri ve tablolar. Farklı sütun yüksekliklerinin oluşturduğu uzun boşluklar önlenir; dar ekranlarda paneller alt alta geçer.
