@@ -1168,3 +1168,5 @@ Kullanıcı oluşturma, listeleme, parola sıfırlama ve kalıcı silme yalnızc
 Kullanıcı yönetimi üst gezintide yalnızca bilalozok hesabının gördüğü Yönetim sekmesindedir. Özel takip içindeki yinelenen oturum/çıkış kutusu gösterilmez; çıkış üst panelden yapılır. Yönetim sekmesi klavyeyle gezilebilir; yetkisiz hesaplar admin adresinde kişisel Özete yönlendirilir. Sunucu yetki kontrolleri korunur.
 
 Özette erken oluşumlar için Kişisel coinler/Piyasa geneli kapsamı seçilebilir. Kartlar ve liste aynı kapsama aittir; kapsam değişimi eski istek sonuçlarının yeni listeye yazılmasını engeller. Piyasa geneli mevcut formasyon geçmişini okur, yeni tarama veya Binance isteği başlatmaz. Giriş koruması ve tek mumluk süre korunur.
+
+Dashboard kompakt analiz panelleri kullanır: özet grafikleri ana alanda, erken uyarılar ve takip sağ panelde, coin tabloları tam genişlikte gösterilir. Dar ekranlarda paneller alt alta geçer; mevcut veri ve işlemler korunur.
