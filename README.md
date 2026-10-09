@@ -1207,3 +1207,5 @@ ve aynı kapanışın gösterge bağlamı saklanır. Tekrarlar aynı anahtarla �
 Gösterge sürümü, formasyon ve yön ayrı karşılaştırılır. 24 saat çakışan aynı coin/sürüm
 kayıtlarının en erkeni, sonuca bakılmadan tutulur. Eksik veriler sıfır sayılmaz.
 Formasyon ekranında “Erken uyarıların ölçülen sonuçları” düğmesi salt okunur özeti gösterir.
+
+Erken uyarı ölçüm ekranında formasyon, beklenen yön ve süre filtreleri bulunur. Kartlar tüm yüklenen dönemi özetler; filtreli son kayıt listesi yalnızca API yanıtındaki son 20 uyarıyı kapsar. Bekleyen sonuçlarda planlanan kapanış Türkiye saatiyle gösterilir; süre bekleme, worker/veri bekleme ve saklanmış geçersiz sonuç birbirinden ayrılır.
