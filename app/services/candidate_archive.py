@@ -99,6 +99,9 @@ def collect(db, stamp):
             select(candle).where(ranked.c.position <= 200).order_by(candle.symbol, candle.open_time)
         ):
             grouped[row.symbol].append(row)
+    from app.services.candidate_indicator_study import snapshot, version
+
+    fingerprint = version()
     candidates, universe, quality = [], [], Counter()
     for symbol in symbols:
         analysis = formations.analyze_rows(grouped[symbol.symbol], symbol.symbol, stamp)
@@ -139,6 +142,13 @@ def collect(db, stamp):
                 alignment=view["alignment"],
                 new_purchase_review=view["new_purchase_review"],
                 holding_review=view["holding_review"],
+            )
+            item["indicator_snapshot"] = snapshot(
+                grouped[symbol.symbol],
+                stamp,
+                report["patterns"],
+                item["primary_pattern"],
+                fingerprint,
             )
             candidates.append(item)
     candidates.sort(key=lambda r: (-r["evidence_score"], -r["quote_volume_24h"], r["symbol"]))

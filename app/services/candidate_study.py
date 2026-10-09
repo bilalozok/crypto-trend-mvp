@@ -39,6 +39,7 @@ def report(db, owner, stamp, days):
                 continue
             records.append((entry, scan.id, scan.rule_hash, c))
     records.sort(key=lambda r: (r[0], r[1], r[3]["symbol"]))
+    indicator_records = []
     last, groups, overlap = {}, defaultdict(list), 0
     for entry, scan_id, rule, c in records:
         key = (rule, c["symbol"])
@@ -48,6 +49,7 @@ def report(db, owner, stamp, days):
         last[key] = entry
         outcomes = [stored.get((scan_id, c["symbol"], h)) for h in HORIZONS]
         groups[(rule, c["primary_pattern"]["name"])].append(outcomes)
+        indicator_records.append((rule, c, outcomes))
     output = []
     for (rule, pattern), rows in sorted(groups.items()):
         paired = [r for r in rows if all(o and o.get("status") == "complete" for o in r)]
@@ -82,7 +84,10 @@ def report(db, owner, stamp, days):
                 horizons=horizons,
             )
         )
+    from app.services.candidate_indicator_study import study
+
     return dict(
+        indicator_study=study(indicator_records),
         version="candidate_paired_study_v1",
         as_of=timestamp(stamp).isoformat(),
         days=days,
