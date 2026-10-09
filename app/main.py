@@ -626,10 +626,10 @@ def early_formations(db: DbDep):
 
 @app.get("/analysis/binance/early-study")
 def early_study(db: DbDep, days: int = Query(default=7, ge=1, le=30)):
-    from app.services.early_formation_study import report
+    from app.services.early_measurement_details import report_with_details
 
     try:
-        return report(db, now_ms(), days)
+        return report_with_details(db, now_ms(), days)
     except SQLAlchemyError as exc:
         raise HTTPException(
             status_code=503,

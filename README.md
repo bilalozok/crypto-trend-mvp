@@ -1213,3 +1213,5 @@ Erken uyarı ölçüm ekranında formasyon, beklenen yön ve süre filtreleri bu
 Erken uyarı ölçümleri formasyon, yön ve süre filtreleriyle sıfır merkezli grafiklerde gösterilir. Sürümler ayrı panellerde tutulur; dört geçerli sonucu tamamlanmamış kayıtlar sıfır hareket sayılmaz. Grafikler mevcut saklanmış veriyi kullanır.
 
 Erken ölçüm grafiklerinde tamamlanan karşılaştırma örneği yoksa boş çubuklar yerine kısa durum kartı gösterilir. Geçerli sonuçlar yüklendiğinde grafik açılır; ayrıntılı tablo ve filtreler korunur.
+
+Erken ölçüm kayıtlarında uyarı anında saklanan 15m gösterge değerleri ve formasyon uyumu açılabilir. Güncel grafik ayrı düğmeyle açılır; kayıtlar yeniden hesaplanmaz. Bu okuma katmanı ölçüm kural sürümünü değiştirmez.
