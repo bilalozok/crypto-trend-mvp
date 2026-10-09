@@ -85,6 +85,39 @@ section,.toolbar{border-radius:5px;padding:16px;margin-top:12px}h2{font-size:16p
 .formation-placeholder{color:#64748b}
 #formation-tabs{margin:12px 0 20px}#formation-tabs button{white-space:nowrap}#formation-measure-controls{margin-bottom:16px}
 .task-tabs{margin:12px 0 20px;gap:6px}.task-tabs button{white-space:nowrap}.task-pane{min-width:0}.task-pane[hidden]{display:none}#panel-overview .terminal-primary{display:block}.task-pane .reading-guide{margin:8px 0 12px}
+
+/* Consistent section hierarchy and visible disclosure controls. */
+main{--accent:#0f766e;--accent-soft:#f0fdfa;--accent-line:#99d5cc}
+#workspace-public{--accent:#1e40af;--accent-soft:#eff6ff;--accent-line:#b8cdf5}
+#workspace-private{--accent:#6d28d9;--accent-soft:#f5f3ff;--accent-line:#d6c5f6}
+#workspace-admin{--accent:#92400e;--accent-soft:#fffbeb;--accent-line:#e7ca92}
+main h2{font-size:18px;font-weight:750;color:var(--accent);border-left:5px solid var(--accent);padding:3px 0 3px 11px;line-height:1.4}
+main h3{font-size:15px;font-weight:700;color:var(--ink);border-left:3px solid var(--accent);padding:7px 10px;background:var(--accent-soft);border-radius:0 5px 5px 0;line-height:1.45}
+main h4{color:var(--accent);font-size:14px;font-weight:700;line-height:1.5}
+.section-head{padding-bottom:10px;border-bottom:1px solid var(--accent-line);margin-bottom:12px}
+.section-head h3{background:none;margin:0}.terminal-panel,.horizon-card{border-top:3px solid var(--accent-line)}
+.tabs{border-bottom:2px solid var(--accent-line);gap:6px}.tabs button{border:1px solid transparent;border-bottom:0;color:#475569;font-weight:650;border-radius:6px 6px 0 0}
+.tabs button:hover{background:var(--accent-soft);color:var(--accent)}
+.tabs button[aria-selected=true]{background:var(--accent);color:#fff;box-shadow:none;border-color:var(--accent)}
+.workspace-tabs button[aria-selected=true]{color:#0f766e;background:#fff;box-shadow:0 1px 5px #14243818}
+main details{min-width:0;border:1px solid var(--accent-line);border-radius:7px;background:#fff;padding:0;margin:12px 0;overflow:visible}
+main details>summary{display:block;position:relative;list-style:none;padding:11px 43px 11px 13px;margin:0!important;background:var(--accent-soft);color:var(--accent);font-weight:700;border-radius:6px;line-height:1.5;cursor:pointer;overflow-wrap:anywhere;min-height:40px}
+main details>summary::-webkit-details-marker{display:none}
+main details>summary::after{content:"+";position:absolute;right:12px;top:50%;transform:translateY(-50%);display:grid;place-items:center;width:22px;height:22px;border:1px solid var(--accent-line);background:white;border-radius:5px;font-size:18px;font-weight:700;line-height:1}
+main details[open]>summary{border-radius:6px 6px 0 0;border-bottom:1px solid var(--accent-line)}
+main details[open]>summary::after{content:"−"}
+main details>summary:hover{filter:brightness(.97)}
+main details>summary:focus-visible{outline:3px solid #2563eb;outline-offset:3px}
+main details[open]>:not(summary){margin-left:12px;margin-right:12px}
+main details[open]>:last-child:not(summary){margin-bottom:12px}
+main .table-wrap details,main .coin-pattern-card details{margin:6px 0}
+main .table-wrap details>summary,main .coin-pattern-card details>summary{font-size:12px;padding:7px 34px 7px 9px;min-height:32px}
+main .table-wrap details>summary::after,main .coin-pattern-card details>summary::after{right:7px;width:18px;height:18px;font-size:15px}
+main .table-wrap details[open]>:not(summary){margin-left:9px;margin-right:9px;overflow-wrap:anywhere}
+main .rule-token summary{font-size:11px}main .reading-guide{font-size:12px}
+main th{background:var(--accent-soft);color:var(--accent)}main th:first-child{background:var(--accent-soft)}
+main input:focus-visible,main select:focus-visible{outline:3px solid #2563eb;outline-offset:2px}
+@media(max-width:600px){main h2{font-size:16px}main h3{font-size:14px}.tabs button{padding:10px 12px}main details>summary{padding:10px 40px 10px 11px}}
 </style></head>
 <body>
 <header><strong>Crypto Trend<span> / Analiz merkezi</span></strong><span>Binance Spot · USDT · 15 dakika</span><button id="global-logout" type="button" class="secondary">Çıkış yap</button></header>

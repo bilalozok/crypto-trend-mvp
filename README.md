@@ -1225,3 +1225,5 @@ Erken ölçüm aramasında coin ve formasyon açılır listeden seçilir. Seçen
 Uyarılar ve formasyonlar ekranı erken uyarılar, manuel tarama, ölçüm sonuçları, geçmiş arama ve veri sağlığı sekmelerine ayrılır. Açıklamalar ve ayrıntılı tablolar isteğe bağlı açılır; erken uyarı otomatik okuması yalnızca ilgili sekme görünürken çalışır.
 
 Tüm ana çalışma ekranları amaca göre alt sekmelere ayrılır: coin grafik/gösterge/geçmiş, piyasa sonuçları, rapor listesi/ayrıntısı, kişisel özet, portföy listesi/ayrıntısı, aday tarama/takip, alış değerleme/kayıt ekleme ve yönetim. Bir coin veya rapor seçildiğinde ilgili ayrıntı sekmesi açılır; filtreler ve kayıtlar korunur.
+
+Görsel bölüm ayrımı: piyasa ekranları mavi, kişisel takip mor, yönetim amber vurgu kullanır. Açılır alanlar çerçeveli renkli başlık ve +/− işaretiyle görünür; seçili sekmeler dolu renkle ayrılır. Yükseliş/düşüş ve kâr/zarar renkleri korunur.
