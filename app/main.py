@@ -635,3 +635,38 @@ def early_study(db: DbDep, days: int = Query(default=7, ge=1, le=30)):
             status_code=503,
             detail="Erken uyarı ölçümleri hazır değil; migration ve worker ayarını kontrol et.",
         ) from exc
+
+
+@app.get("/analysis/binance/early-study/records")
+def early_study_records(
+    db: DbDep,
+    symbol: str = Query(default="", max_length=64),
+    name: str = Query(default="", max_length=100),
+    direction: Literal["all", "up", "down"] = "all",
+    start: datetime | None = None,
+    end: datetime | None = None,
+    as_of: int | None = Query(default=None, ge=0),
+    offset: int = Query(default=0, ge=0, le=100000),
+):
+    from app.services.early_measurement_search import search_records
+
+    if any(value is not None and value.tzinfo is None for value in (start, end)):
+        raise HTTPException(status_code=422, detail="Tarih saat dilimi içermeli.")
+    if start is not None and end is not None and start >= end:
+        raise HTTPException(status_code=422, detail="Başlangıç bitişten önce olmalı.")
+    try:
+        return search_records(
+            db,
+            now_ms(),
+            symbol=symbol,
+            name=name,
+            direction=direction,
+            start_ms=round(start.timestamp() * 1000) if start is not None else None,
+            end_ms=round(end.timestamp() * 1000) if end is not None else None,
+            as_of=as_of,
+            offset=offset,
+        )
+    except SQLAlchemyError as exc:
+        raise HTTPException(
+            status_code=503, detail="Erken ölçüm kayıtları şu anda okunamıyor."
+        ) from exc
