@@ -1190,3 +1190,5 @@ Yeni aday taramaları adayın 15m gösterge değerlerini, önceki mumunu, Fibona
 Aday taramasının kapsam özeti güncel veriyle değerlendirilen coin sayısını, aday sayısını ve eleme/veri sorunu nedenlerini ayrı gösterir. Sıfır aday taramanın başarısız olduğu anlamına gelmez; güncel veriyle hiç değerlendirilemeyen tarama ayrıca belirtilir. Tanı tablosu seçilen değişmez tarama kaydından okunur.
 
 Kayıtlı aday taramalarını yenile ve daha fazla tarama düğmeleri kayıt listesini yükler; yükleme durumu ekranda gösterilir.
+
+Gösterge sonuç karşılaştırması formasyon/kural/gösterge sürümü ve süre seçimiyle kartlarda ve sıfır merkezli grafiklerde gösterilir. Örtüşen alt gruplar toplanmaz; eksik sonuçlar grafikte sıfır sayılmaz.
