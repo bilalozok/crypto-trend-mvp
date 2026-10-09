@@ -1170,3 +1170,5 @@ Kullanıcı yönetimi üst gezintide yalnızca bilalozok hesabının gördüğü
 Özette erken oluşumlar için Kişisel coinler/Piyasa geneli kapsamı seçilebilir. Kartlar ve liste aynı kapsama aittir; kapsam değişimi eski istek sonuçlarının yeni listeye yazılmasını engeller. Piyasa geneli mevcut formasyon geçmişini okur, yeni tarama veya Binance isteği başlatmaz. Giriş koruması ve tek mumluk süre korunur.
 
 Dashboard kompakt analiz panelleri kullanır: özet grafikleri ana alanda, erken uyarılar ve takip sağ panelde, coin tabloları tam genişlikte gösterilir. Dar ekranlarda paneller alt alta geçer; mevcut veri ve işlemler korunur.
+
+Özet ekranında takip sayaçları kompakt satırlarda, kâr/zarar değerleri yön rengiyle gösterilir. Coin raporu açılabilir takip açıklamaları içeren formasyon kartlarını kullanır; özetin uzun okuma notları açılır alandadır.
