@@ -67,3 +67,36 @@ def test_endpoint_requires_login_and_valid_dates(client):
     assert client.get(url, params={"direction": "bad"}).status_code == 422
     client.cookies.clear()
     assert client.get(url).status_code == 401
+
+
+def test_options_are_unique_from_stored_records_and_authenticated(client):
+    from app.services.early_measurement_search import record_options
+
+    with SessionLocal() as db:
+        for symbol, rule, name in [
+            ("BTCUSDT", "old", "Çift dip"),
+            ("BTCUSDT", "new", "Çift dip"),
+            ("ETHUSDT", "old", "Çift tepe"),
+        ]:
+            db.add(
+                EarlyFormation(
+                    symbol=symbol,
+                    rule_hash=rule,
+                    pattern="dip",
+                    close_ms=1,
+                    observed_ms=1,
+                    entry_ms=2,
+                    snapshot=dict(name=name),
+                    outcomes={},
+                    complete=False,
+                )
+            )
+        db.commit()
+        options = record_options(db)
+        assert options["symbols"] == ["BTCUSDT", "ETHUSDT"]
+        assert set(options["names"]) == {"Çift dip", "Çift tepe"}
+        assert not db.dirty
+    url = "/analysis/binance/early-study/record-options"
+    assert client.get(url).json() == options
+    client.cookies.clear()
+    assert client.get(url).status_code == 401

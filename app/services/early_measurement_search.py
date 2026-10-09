@@ -61,3 +61,13 @@ def search_records(
         rows=rows,
         next_offset=offset + 20 if len(records) > 20 else None,
     )
+
+
+def record_options(db):
+    pairs = db.execute(
+        select(EarlyFormation.symbol, EarlyFormation.snapshot["name"].as_string()).distinct()
+    ).all()
+    return dict(
+        symbols=sorted({symbol for symbol, _ in pairs}),
+        names=sorted({name for _, name in pairs if name}),
+    )

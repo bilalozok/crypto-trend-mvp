@@ -670,3 +670,15 @@ def early_study_records(
         raise HTTPException(
             status_code=503, detail="Erken ölçüm kayıtları şu anda okunamıyor."
         ) from exc
+
+
+@app.get("/analysis/binance/early-study/record-options")
+def early_study_record_options(db: DbDep):
+    from app.services.early_measurement_search import record_options
+
+    try:
+        return record_options(db)
+    except SQLAlchemyError as exc:
+        raise HTTPException(
+            status_code=503, detail="Coin ve formasyon seçenekleri şu anda okunamıyor."
+        ) from exc
