@@ -1188,3 +1188,5 @@ Formasyon–gösterge uyum özeti aynı vadenin aynı 200 kapanmış mumundan ü
 Yeni aday taramaları adayın 15m gösterge değerlerini, önceki mumunu, Fibonacci referanslarını ve ana formasyon uyum koşullarını tarama anında JSON içinde saklar. Mevcut toplu okunmuş 200 mum kullanılır; ek worker veya migration gerekmez. Eski kayıtlar doldurulmaz. Aday değerlendirmesinde aynı kural/gösterge sürümü ve formasyon içindeki trend/momentum alt grupları dört tamamlanmış sonuçla karşılaştırılır; mevcut sonuçtan bağımsız 24 saat çakışma elemesi korunur. Fark nedensel katkı veya olasılık değildir.
 
 Aday taramasının kapsam özeti güncel veriyle değerlendirilen coin sayısını, aday sayısını ve eleme/veri sorunu nedenlerini ayrı gösterir. Sıfır aday taramanın başarısız olduğu anlamına gelmez; güncel veriyle hiç değerlendirilemeyen tarama ayrıca belirtilir. Tanı tablosu seçilen değişmez tarama kaydından okunur.
+
+Kayıtlı aday taramalarını yenile ve daha fazla tarama düğmeleri kayıt listesini yükler; yükleme durumu ekranda gösterilir.
