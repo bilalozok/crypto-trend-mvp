@@ -103,6 +103,24 @@ def collect_market(budget=180, workers=4, limit=500):
                     "formation_history_failed symbol=%s error=%s", symbol, type(exc).__name__
                 )
                 return False, False, True
+            if os.getenv("EARLY_FORMATION_STUDY_ENABLED", "false").lower() == "true":
+                from app.services.early_formation_study import track_symbol as track_early
+
+                try:
+                    with SessionLocal() as db:
+                        measured = track_early(db, symbol, now_ms())
+                    if measured["recorded"] or measured["settled"]:
+                        logger.info(
+                            "early_study_complete symbol=%s recorded=%s settled=%s",
+                            symbol,
+                            measured["recorded"],
+                            measured["settled"],
+                        )
+                except Exception as exc:
+                    hard_failure = True
+                    logger.error(
+                        "early_study_failed symbol=%s error=%s", symbol, type(exc).__name__
+                    )
             if os.getenv("FORWARD_TRACKING_ENABLED", "false").lower() == "true":
                 from app.services.forward_tracking import track_symbol
 

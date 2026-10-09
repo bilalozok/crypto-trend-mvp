@@ -177,13 +177,13 @@ def test_migration_upgrade_preserves_legacy_candles(tmp_path, monkeypatch):
             "VALUES (1, 'BTCUSDT', '1h', 1, 1, 1, 1, 1, 1)"
         )
     command.upgrade(cfg, "head")
-    assert {"binance_spot_symbols", "binance_spot_candles"} <= set(
+    assert {"binance_spot_symbols", "binance_spot_candles", "early_formation_measurements"} <= set(
         inspect(engine).get_table_names()
     )
     with engine.connect() as connection:
         assert connection.exec_driver_sql("SELECT count(*) FROM candles").scalar() == 1
         version = connection.exec_driver_sql("SELECT version_num FROM alembic_version").scalar()
-        assert version == "1515c2026k01"
+        assert version == "0910e2026l01"
     engine.dispose()
 
 

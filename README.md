@@ -1196,3 +1196,14 @@ Gösterge sonuç karşılaştırması formasyon/kural/gösterge sürümü ve sü
 Erken oluşum satırlarından aynı 15m kapanışının trend ve momentum bağlamı isteğe bağlı açılır. Gösterge raporu uyarı kapanışı/formasyon/yönüyle eşleşmezse destek yorumu gösterilmez. Aynı coin/kapanış cevabı uyarı süresince tekrar kullanılır; ek Binance çağrısı veya worker sıklığı değişikliği yapılmaz.
 
 Erken uyarılarda süre mevcut hücrede güncellenir; aynı liste yeniden çizilmez. Veri/gösterge değişince yatay kaydırma konumu korunur. Gösterge bağlamı coin adının yanındadır.
+
+### Erken oluşum sonuç ölçümü
+
+`alembic upgrade head` ile `0910e2026l01` migration uygulanır. Sonra candle worker için
+`EARLY_FORMATION_STUDY_ENABLED=true` etkinleştirilir (varsayılan kapalı). Mevcut 15m mumlar
+kullanılır; Binance çağrısı eklenmez. Sadece hâlen tek mumluk pencerede olan yeni oluşumlar
+ve aynı kapanışın gösterge bağlamı saklanır. Tekrarlar aynı anahtarla çoğaltılmaz.
+1/2/4/24 saat ham fiyat hareketi ölçülür; düşüş beklentisi açığa satış getirisi sayılmaz.
+Gösterge sürümü, formasyon ve yön ayrı karşılaştırılır. 24 saat çakışan aynı coin/sürüm
+kayıtlarının en erkeni, sonuca bakılmadan tutulur. Eksik veriler sıfır sayılmaz.
+Formasyon ekranında “Erken uyarıların ölçülen sonuçları” düğmesi salt okunur özeti gösterir.

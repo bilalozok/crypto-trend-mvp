@@ -622,3 +622,16 @@ def early_formations(db: DbDep):
         return listing(db, now_ms())
     except SQLAlchemyError as exc:
         raise HTTPException(status_code=503, detail="Early formation data unavailable") from exc
+
+
+@app.get("/analysis/binance/early-study")
+def early_study(db: DbDep, days: int = Query(default=7, ge=1, le=30)):
+    from app.services.early_formation_study import report
+
+    try:
+        return report(db, now_ms(), days)
+    except SQLAlchemyError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Erken uyarı ölçümleri hazır değil; migration ve worker ayarını kontrol et.",
+        ) from exc

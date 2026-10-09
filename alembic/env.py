@@ -8,6 +8,7 @@ from sqlalchemy import engine_from_config, pool
 import app.db.models.candidate_observation  # noqa: F401
 import app.db.models.candidate_outcome  # noqa: F401
 import app.db.models.candidate_scan  # noqa: F401
+import app.db.models.early_formation  # noqa: F401
 import app.db.models.portfolio_snapshot  # noqa: F401
 from alembic import context
 
