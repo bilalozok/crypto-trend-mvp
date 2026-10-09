@@ -1194,3 +1194,5 @@ Kayıtlı aday taramalarını yenile ve daha fazla tarama düğmeleri kayıt lis
 Gösterge sonuç karşılaştırması formasyon/kural/gösterge sürümü ve süre seçimiyle kartlarda ve sıfır merkezli grafiklerde gösterilir. Örtüşen alt gruplar toplanmaz; eksik sonuçlar grafikte sıfır sayılmaz.
 
 Erken oluşum satırlarından aynı 15m kapanışının trend ve momentum bağlamı isteğe bağlı açılır. Gösterge raporu uyarı kapanışı/formasyon/yönüyle eşleşmezse destek yorumu gösterilmez. Aynı coin/kapanış cevabı uyarı süresince tekrar kullanılır; ek Binance çağrısı veya worker sıklığı değişikliği yapılmaz.
+
+Erken uyarılarda süre mevcut hücrede güncellenir; aynı liste yeniden çizilmez. Veri/gösterge değişince yatay kaydırma konumu korunur. Gösterge bağlamı coin adının yanındadır.

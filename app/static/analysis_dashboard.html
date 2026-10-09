@@ -408,18 +408,28 @@ function earlyIndicatorSummary(data,alert){
 }
 function earlyIndicatorCell(alert){
  const now=Date.now();for(const [key,value] of earlyIndicatorCache)if(value.expires<=now)earlyIndicatorCache.delete(key);
- const key=alert.symbol+":"+alert.candle_close_at,entry=earlyIndicatorCache.get(key),root=document.createElement("div");root.style.cssText="min-width:230px;max-width:330px;white-space:normal";
+ const key=alert.symbol+":"+alert.candle_close_at,entry=earlyIndicatorCache.get(key),root=document.createElement("div");root.style.cssText="min-width:230px;max-width:330px;white-space:normal;overflow-wrap:anywhere";
  if(entry?.data){const result=earlyIndicatorSummary(entry.data,alert),note=document.createElement("p");note.className="legend";note.style.margin="4px 0";if(result.note){note.textContent=result.note;root.append(note)}else{const labels={supports:"Destekliyor",conflicts:"Çelişiyor",mixed:"Karışık",neutral:"Nötr",caution:"Dikkat"};for(const g of result.groups){const line=document.createElement("p");line.style.margin="4px 0";line.textContent=g.name+": "+(labels[g.state]||g.state);line.title=g.reason;root.append(line)}note.textContent="RSI14: "+number(result.rsi)+" · MACD histogramı: "+new Intl.NumberFormat("tr-TR",{maximumSignificantDigits:8}).format(result.histogram)+" · Kapanış: "+time(result.at)+" · Oluşum teyidi değildir.";root.append(note)}return root}
- const button=document.createElement("button");button.type="button";button.className="secondary";button.textContent=entry?.busy?"Göstergeler yükleniyor…":entry?.error?"Yeniden dene":"Gösterge bağlamını aç";button.disabled=Boolean(entry?.busy);button.onclick=()=>loadEarlyIndicator(alert);root.append(button);if(entry?.error){const note=document.createElement("p");note.className="legend";note.textContent=entry.error;root.append(note)}return root;
+ const button=document.createElement("button");button.type="button";button.className="secondary";button.textContent=entry?.busy?"Göstergeler yükleniyor…":entry?.error?"Yeniden dene":"Gösterge bağlamını aç";button.disabled=Boolean(entry?.busy);button.dataset.alertContextKey=key;button.onclick=()=>loadEarlyIndicator(alert);root.append(button);if(entry?.error){const note=document.createElement("p");note.className="legend";note.textContent=entry.error;root.append(note)}return root;
 }
 async function loadEarlyIndicator(alert){
  if(alert.expires_ms<=Date.now())return;const key=alert.symbol+":"+alert.candle_close_at;if(earlyIndicatorCache.get(key)?.busy)return;const entry={busy:true,expires:alert.expires_ms},token=accountGeneration;earlyIndicatorCache.set(key,entry);renderEarly();renderDashboardAlerts();
  try{const data=await getJSON("/analysis/binance/indicators?"+new URLSearchParams({symbol:alert.symbol}));if(token!==accountGeneration||entry.expires<=Date.now()||earlyIndicatorCache.get(key)!==entry)return;entry.data=data}catch(e){if(token===accountGeneration&&earlyIndicatorCache.get(key)===entry)entry.error="Gösterge bağlamı alınamadı. Yeniden deneyebilirsin."}finally{if(token===accountGeneration&&earlyIndicatorCache.get(key)===entry){entry.busy=false;renderEarly();renderDashboardAlerts()}}
 }
 let earlyRows=[],earlyBusy=false,earlyLast=0,earlyChecked=null;
+function earlyRemainingCell(alert){const span=document.createElement("span");span.dataset.expires=String(alert.expires_ms);span.textContent=Math.max(0,Math.ceil((alert.expires_ms-Date.now())/60000))+" dk";return span}
+function stableEarlyTable(id,headers,rows,alerts){
+ const root=$(id),signature=JSON.stringify([headers,alerts,alerts.map(a=>{const e=earlyIndicatorCache.get(a.symbol+":"+a.candle_close_at);return e?.busy?"busy":e?.data?"ready":e?.error??"unloaded"})]);
+ if(root.dataset.alertSignature!==signature||!root.firstElementChild){
+  const previous=root.querySelector(".table-wrap"),left=previous?.scrollLeft??0,top=previous?.scrollTop??0,active=document.activeElement,focusKey=root.contains(active)?active.dataset?.alertContextKey:null;
+  table(id,headers,rows);root.dataset.alertSignature=signature;const wrap=root.querySelector(".table-wrap");if(wrap){wrap.scrollLeft=left;wrap.scrollTop=top}
+  if(focusKey){const button=[...root.querySelectorAll("button[data-alert-context-key]")].find(b=>b.dataset.alertContextKey===focusKey);button?.focus({preventScroll:true})}
+ }
+ for(const cell of root.querySelectorAll("[data-expires]"))cell.textContent=Math.max(0,Math.ceil((Number(cell.dataset.expires)-Date.now())/60000))+" dk";
+}
 function renderEarly(){
  earlyRows=earlyRows.filter(r=>r.expires_ms>Date.now());
- table("early-table",["Coin","Yeni oluşum","Yön","İlk görülebilir kapanış (TR)","Kalan süre","Teyit eşiği USDT","Geçersizlik USDT","15m gösterge bağlamı"],earlyRows.map(r=>[coinButton(r.symbol),r.name,r.direction==="up"?"↑ Yükseliş oluşuyor":"↓ Düşüş oluşuyor",time(r.candle_close_at),Math.max(0,Math.ceil((r.expires_ms-Date.now())/60000))+" dk",priceCell(r.confirmation_threshold),priceCell(r.invalidation_level),earlyIndicatorCell(r)]));
+ stableEarlyTable("early-table",["Coin","15m gösterge bağlamı","Yeni oluşum","Yön","İlk görülebilir kapanış (TR)","Kalan süre","Teyit eşiği USDT","Geçersizlik USDT"],earlyRows.map(r=>[coinButton(r.symbol),earlyIndicatorCell(r),r.name,r.direction==="up"?"↑ Yükseliş oluşuyor":"↓ Düşüş oluşuyor",time(r.candle_close_at),earlyRemainingCell(r),priceCell(r.confirmation_threshold),priceCell(r.invalidation_level)]),earlyRows);
 }
 async function loadEarly(){
  if(earlyBusy)return;earlyBusy=true;earlyLast=Date.now();$("early-refresh").disabled=true;
@@ -476,7 +486,7 @@ function renderDashboardAlerts(){
  const cards=$("dashboard-cards");cards.replaceChildren();
  cards.append(dashboardCard("Coin · Alış kaydı var",dashboardData.portfolio_total,null,()=>activateTab("portfolio")));
  for(const [dir,label] of [["up","↑ Yükseliş oluşuyor"],["down","↓ Düşüş oluşuyor"]])cards.append(dashboardCard(scopeLabel+" · "+label,dashboardData.alerts.filter(a=>a.direction===dir).length,dir,()=>$("dashboard-alerts").scrollIntoView({behavior:"smooth",block:"center"})));
- table("dashboard-alerts",["Coin","Oluşum","Beklenen yön · Teyitsiz","Kapanış (TR)","Kalan süre","Teyit eşiği USDT","Geçersizlik USDT","15m gösterge bağlamı"],dashboardData.alerts.map(a=>[coinButton(a.symbol),a.name,a.direction==="up"?"↑ Yükseliş oluşuyor":"↓ Düşüş oluşuyor",time(a.candle_close_at),Math.max(0,Math.ceil((a.expires_ms-Date.now())/60000))+" dk",priceCell(a.confirmation_threshold),priceCell(a.invalidation_level),earlyIndicatorCell(a)]));
+ stableEarlyTable("dashboard-alerts",["Coin","15m gösterge bağlamı","Oluşum","Beklenen yön · Teyitsiz","Kapanış (TR)","Kalan süre","Teyit eşiği USDT","Geçersizlik USDT"],dashboardData.alerts.map(a=>[coinButton(a.symbol),earlyIndicatorCell(a),a.name,a.direction==="up"?"↑ Yükseliş oluşuyor":"↓ Düşüş oluşuyor",time(a.candle_close_at),earlyRemainingCell(a),priceCell(a.confirmation_threshold),priceCell(a.invalidation_level)]),dashboardData.alerts);
  if(dashboardEarlyError)message("dashboard-alerts","Erken uyarılar alınamadı; güncel durum bilinmiyor.",true);else if(dashboardEarlyBusy&&!dashboardData.alerts.length)message("dashboard-alerts","Seçilen kapsamdaki erken uyarılar yükleniyor…");else if(!dashboardData.alerts.length)message("dashboard-alerts",scopeLabel+": şu anda tek mumluk yeni oluşum uyarısı yok.");
 }
 async function loadDashboard(offset=0){
