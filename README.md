@@ -1227,3 +1227,5 @@ Uyarılar ve formasyonlar ekranı erken uyarılar, manuel tarama, ölçüm sonu�
 Tüm ana çalışma ekranları amaca göre alt sekmelere ayrılır: coin grafik/gösterge/geçmiş, piyasa sonuçları, rapor listesi/ayrıntısı, kişisel özet, portföy listesi/ayrıntısı, aday tarama/takip, alış değerleme/kayıt ekleme ve yönetim. Bir coin veya rapor seçildiğinde ilgili ayrıntı sekmesi açılır; filtreler ve kayıtlar korunur.
 
 Görsel bölüm ayrımı: piyasa ekranları mavi, kişisel takip mor, yönetim amber vurgu kullanır. Açılır alanlar çerçeveli renkli başlık ve +/− işaretiyle görünür; seçili sekmeler dolu renkle ayrılır. Yükseliş/düşüş ve kâr/zarar renkleri korunur.
+
+Bölüm içi ana ve ikincil eylem butonları çalışma alanının vurgu rengini kullanır; dinamik coin bağlantıları ve filtre kartları da aynı paleti izler.

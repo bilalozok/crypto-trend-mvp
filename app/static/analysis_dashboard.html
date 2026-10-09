@@ -118,6 +118,18 @@ main .rule-token summary{font-size:11px}main .reading-guide{font-size:12px}
 main th{background:var(--accent-soft);color:var(--accent)}main th:first-child{background:var(--accent-soft)}
 main input:focus-visible,main select:focus-visible{outline:3px solid #2563eb;outline-offset:2px}
 @media(max-width:600px){main h2{font-size:16px}main h3{font-size:14px}.tabs button{padding:10px 12px}main details>summary{padding:10px 40px 10px 11px}}
+
+/* Actions inherit the active workspace palette, including dynamically added rows. */
+main button:not(.secondary):not(.coin):not(.dashboard-card):not(.candidate-filter):not([role="tab"]){background:var(--accent);border-color:var(--accent);color:#fff}
+main button.secondary{background:#fff;color:var(--accent);border-color:var(--accent-line)}
+main button.secondary:hover:not(:disabled){background:var(--accent-soft);border-color:var(--accent)}
+main button:not(.secondary):not(.coin):not(.dashboard-card):not(.candidate-filter):not([role="tab"]):hover:not(:disabled){filter:brightness(.92)}
+main .table-wrap td .coin{color:var(--accent);background:transparent;border:0}
+main button.coin{color:var(--accent);background:transparent;border-color:var(--accent-line)}
+main button.coin:hover:not(:disabled){text-decoration:underline;text-underline-offset:3px}
+main button.dashboard-card,main button.candidate-filter{background:#fff;color:var(--ink);border-color:var(--accent-line)}
+main button.dashboard-card:hover:not(:disabled),main button.candidate-filter:hover:not(:disabled){background:var(--accent-soft);border-color:var(--accent)}
+main button.candidate-filter[aria-pressed="true"]{background:var(--accent-soft);border:2px solid var(--accent);box-shadow:none}
 </style></head>
 <body>
 <header><strong>Crypto Trend<span> / Analiz merkezi</span></strong><span>Binance Spot · USDT · 15 dakika</span><button id="global-logout" type="button" class="secondary">Çıkış yap</button></header>
