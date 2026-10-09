@@ -126,5 +126,17 @@ def report(db, symbol, stamp):
                 ).all()
             )
         )
-        horizons.append(analyze_rows(rows, interval, stamp))
+        horizon = analyze_rows(rows, interval, stamp)
+        if horizon["status"] == "ready":
+            from app.services import formations, portfolio_timeframes
+            from app.services.coin_report import build_report
+            from app.services.indicator_confluence import summarize
+
+            if interval == "15m":
+                analysis = formations.analyze_rows(rows, symbol, stamp)
+            else:
+                analysis = portfolio_timeframes.analyze_rows(rows, symbol, stamp, interval)
+            patterns = build_report(analysis)["patterns"]
+            horizon["confluence"] = summarize(horizon, patterns)
+        horizons.append(horizon)
     return dict(symbol=symbol, checked_at=timestamp(stamp), version=VERSION, horizons=horizons)
