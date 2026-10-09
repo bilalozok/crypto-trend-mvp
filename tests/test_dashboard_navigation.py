@@ -75,3 +75,32 @@ def test_formation_tools_are_separate_accessible_panes(client):
             + '" hidden'
             in html
         )
+
+
+def test_task_views_cover_all_workspaces_without_duplicate_controls(client):
+    html = client.get("/analysis/binance/dashboard").text
+    layout = Layout()
+    layout.feed(html)
+    assert all(count == 1 for count in Counter(layout.ids).values())
+    expected = {
+        "indicator-summary": ("coin", "indicators"),
+        "history-table": ("coin", "history"),
+        "forward-patterns": ("market-results", "patterns"),
+        "saved-table": ("reports", "list"),
+        "saved-view": ("reports", "detail"),
+        "dashboard-alerts": ("overview", "alerts"),
+        "dashboard-return-table": ("overview", "returns"),
+        "dashboard-matrix": ("overview", "portfolio"),
+        "portfolio-table": ("portfolio", "list"),
+        "portfolio-levels": ("portfolio", "detail"),
+        "candidate-archive-list": ("candidate-scan", "archive"),
+        "candidate-fresh-table": ("candidate-scan", "fresh"),
+        "candidate-tracking-table": ("candidate-results", "tracking"),
+        "candidate-outcomes-table": ("candidate-results", "outcomes"),
+        "purchase-table": ("purchases", "records"),
+        "admin-create-form": ("admin", "create"),
+        "admin-users-table": ("admin", "users"),
+    }
+    for element, (group, key) in expected.items():
+        assert "view-" + group + "-pane-" + key in layout.parents[element]
+        assert 'aria-controls="view-' + group + "-pane-" + key + '"' in html

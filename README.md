@@ -1223,3 +1223,5 @@ Geçmiş erken ölçümler coin tam sembolü, formasyon tam adı, yön ve Türki
 Erken ölçüm aramasında coin ve formasyon açılır listeden seçilir. Seçenekler tüm saklanmış ölçümlerden okunur, tekrarsızdır ve yenilenebilir; tüm coinler/formasyonlar seçeneği filtreyi kaldırır.
 
 Uyarılar ve formasyonlar ekranı erken uyarılar, manuel tarama, ölçüm sonuçları, geçmiş arama ve veri sağlığı sekmelerine ayrılır. Açıklamalar ve ayrıntılı tablolar isteğe bağlı açılır; erken uyarı otomatik okuması yalnızca ilgili sekme görünürken çalışır.
+
+Tüm ana çalışma ekranları amaca göre alt sekmelere ayrılır: coin grafik/gösterge/geçmiş, piyasa sonuçları, rapor listesi/ayrıntısı, kişisel özet, portföy listesi/ayrıntısı, aday tarama/takip, alış değerleme/kayıt ekleme ve yönetim. Bir coin veya rapor seçildiğinde ilgili ayrıntı sekmesi açılır; filtreler ve kayıtlar korunur.
