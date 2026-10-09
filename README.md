@@ -1180,3 +1180,5 @@ Dashboard kompakt analiz panelleri kullanır: özet grafikleri ana alanda, erken
 Özetin erken oluşum listesi geniş sol panelde gösterilir. Sağda son tarama takibi ve altında dikkat isteyen vadeler yer alır; dar ekranlarda paneller alt alta geçer.
 
 Coin analizindeki teknik gösterge katmanı RSI14 (Wilder), MACD12/26/9 (SMA ile başlatılan EMA), SMA50/EMA50 ve Bollinger20 ±2 nüfus standart sapmasını kapanmış 15m/4h/1d verilerden hesaplar. Güncel, kesintisiz 200 mum şarttır; son 100 nokta gösterilir. Aday puanları ve erken uyarı kuralları değişmez. 50 günlük ortalama yalnızca günlük vadededir. Gösterge sonuçları bu aşamada arşivlenmez; Fibonacci ve birleşik performans testi sonraki aşamalardır.
+
+Fibonacci açıklayıcı katmanı son 200 kapanmış mumdaki üç sağ mumla doğrulanmış son karşıt dip/tepe çiftini kullanır. İki yön için %23,6/38,2/50/61,8/78,6 düzeltmeleri gösterilir (%50 aralık orta noktasıdır). Belirsiz çiftlerde seviye üretilmez; pivot ve doğrulanma zamanları görünür. Yeni çift seviyeleri değiştirebilir; geçmiş aday kayıtları ve puanlar değişmez.

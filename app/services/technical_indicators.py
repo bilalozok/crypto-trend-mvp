@@ -7,6 +7,7 @@ from sqlalchemy import select
 
 from app.db.models.binance_spot import BinanceSpotCandle, BinanceSpotSymbol
 from app.db.models.portfolio_timeframe import PortfolioCandle
+from app.services.fibonacci_context import context
 from app.services.formations import timestamp
 
 INTERVALS = {"15m": 900_000, "4h": 14_400_000, "1d": 86_400_000}
@@ -98,7 +99,9 @@ def analyze_rows(rows, interval, stamp):
     series = calculate([row.close for row in rows])
     for row, point in zip(rows, series, strict=True):
         point["at"] = timestamp(row.open_time + bar)
-    result.update(status="ready", series=series[-100:], latest=series[-1])
+    result.update(
+        status="ready", series=series[-100:], latest=series[-1], fibonacci=context(rows, bar)
+    )
     return result
 
 
