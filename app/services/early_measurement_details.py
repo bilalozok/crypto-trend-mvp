@@ -3,11 +3,13 @@ from copy import deepcopy
 from sqlalchemy import select
 
 from app.db.models.early_formation import EarlyFormation
+from app.services.early_data_health import data_health
 from app.services.early_formation_study import report
 
 
 def report_with_details(db, stamp, days=7):
     result = report(db, stamp, days)
+    result["data_health"] = data_health(db, stamp, days)
     recent = result["recent"]
     if not recent:
         return result

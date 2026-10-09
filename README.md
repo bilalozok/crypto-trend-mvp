@@ -1215,3 +1215,5 @@ Erken uyarı ölçümleri formasyon, yön ve süre filtreleriyle sıfır merkezl
 Erken ölçüm grafiklerinde tamamlanan karşılaştırma örneği yoksa boş çubuklar yerine kısa durum kartı gösterilir. Geçerli sonuçlar yüklendiğinde grafik açılır; ayrıntılı tablo ve filtreler korunur.
 
 Erken ölçüm kayıtlarında uyarı anında saklanan 15m gösterge değerleri ve formasyon uyumu açılabilir. Güncel grafik ayrı düğmeyle açılır; kayıtlar yeniden hesaplanmaz. Bu okuma katmanı ölçüm kural sürümünü değiştirmez.
+
+Erken ölçüm veri sağlığı bölümü aktif coinlerin son kapanmış 15m mum güncelliğini ve seçilen dönemdeki en son 1000 ölçüm kaydının bekleme/geçersizlik durumunu gösterir. Kapanış sonrası dört mum toleransı ayrı sayılır; Binance isteği veya kayıt değişikliği yapılmaz. Son başarılı coin alımı, worker çalışmasının kesin kanıtı değildir.
