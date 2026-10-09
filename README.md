@@ -1221,3 +1221,5 @@ Erken ölçüm veri sağlığı bölümü aktif coinlerin son kapanmış 15m mum
 Geçmiş erken ölçümler coin tam sembolü, formasyon tam adı, yön ve Türkiye tarihleriyle aranabilir. Varsayılan son 30 gün, sayfa boyutu 20 kayıttır. Sayfalama sabit gözlem üst sınırı kullanır; yeni kayıtları görmek için arama yenilenir. Saklanmış bağlamlar okunur, geçmiş veri üretilmez.
 
 Erken ölçüm aramasında coin ve formasyon açılır listeden seçilir. Seçenekler tüm saklanmış ölçümlerden okunur, tekrarsızdır ve yenilenebilir; tüm coinler/formasyonlar seçeneği filtreyi kaldırır.
+
+Uyarılar ve formasyonlar ekranı erken uyarılar, manuel tarama, ölçüm sonuçları, geçmiş arama ve veri sağlığı sekmelerine ayrılır. Açıklamalar ve ayrıntılı tablolar isteğe bağlı açılır; erken uyarı otomatik okuması yalnızca ilgili sekme görünürken çalışır.

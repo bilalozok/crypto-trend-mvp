@@ -45,3 +45,33 @@ def test_single_login_and_private_workspace_structure(client):
     assert "workspace-private" not in layout.parents["admin-area"]
     assert 'id="workspace-tab-admin"' in html
     assert 'id="account-center" class="account-center" hidden' in html
+
+
+def test_formation_tools_are_separate_accessible_panes(client):
+    html = client.get("/analysis/binance/dashboard").text
+    layout = Layout()
+    layout.feed(html)
+    assert all(count == 1 for count in Counter(layout.ids).values())
+    for key in ("early", "scan", "measure", "history", "health"):
+        assert "panel-formations" in layout.parents["formation-pane-" + key]
+        assert 'aria-controls="formation-pane-' + key + '"' in html
+    for element, key in [
+        ("early-table", "early"),
+        ("pattern-form", "scan"),
+        ("early-study-charts", "measure"),
+        ("early-search-form", "history"),
+        ("early-health-cards", "health"),
+    ]:
+        assert "formation-pane-" + key in layout.parents[element]
+    assert (
+        'id="formation-pane-early" role="tabpanel" aria-labelledby="formation-tab-early">' in html
+    )
+    for key in ("scan", "measure", "history", "health"):
+        assert (
+            'id="formation-pane-'
+            + key
+            + '" role="tabpanel" aria-labelledby="formation-tab-'
+            + key
+            + '" hidden'
+            in html
+        )
