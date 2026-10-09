@@ -1178,3 +1178,5 @@ Dashboard kompakt analiz panelleri kullanır: özet grafikleri ana alanda, erken
 Özet tek tam genişlikli akış kullanır: grafikler, yan yana uyarı/takip panelleri ve tablolar. Farklı sütun yüksekliklerinin oluşturduğu uzun boşluklar önlenir; dar ekranlarda paneller alt alta geçer.
 
 Özetin erken oluşum listesi geniş sol panelde gösterilir. Sağda son tarama takibi ve altında dikkat isteyen vadeler yer alır; dar ekranlarda paneller alt alta geçer.
+
+Coin analizindeki teknik gösterge katmanı RSI14 (Wilder), MACD12/26/9 (SMA ile başlatılan EMA), SMA50/EMA50 ve Bollinger20 ±2 nüfus standart sapmasını kapanmış 15m/4h/1d verilerden hesaplar. Güncel, kesintisiz 200 mum şarttır; son 100 nokta gösterilir. Aday puanları ve erken uyarı kuralları değişmez. 50 günlük ortalama yalnızca günlük vadededir. Gösterge sonuçları bu aşamada arşivlenmez; Fibonacci ve birleşik performans testi sonraki aşamalardır.
