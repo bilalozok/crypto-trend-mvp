@@ -336,7 +336,7 @@ def coin_indicators(
     db: DbDep,
     symbol: str = Query(..., min_length=1, max_length=64, pattern=r"^[A-Za-z0-9]+$"),
 ):
-    from app.services.technical_indicators import report
+    from app.services.ichimoku_context import report
 
     try:
         result = report(db, symbol.upper(), now_ms())

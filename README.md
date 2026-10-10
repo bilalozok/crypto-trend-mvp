@@ -1235,3 +1235,5 @@ Referans analiz düzeni: solda gezinme, belirgin sayaç kartları ve yuvarlatıl
 Üst çalışma alanı başlığı kompakt tutulur; tekrarlayan çalışma alanı açıklamaları kaldırılmıştır.
 
 Sol menü daraltıldığında simgelerle gösterilir ve içerik alanı genişler; menü tercihi tarayıcıda saklanır.
+
+Coin analizi Göstergeler görünümü Ichimoku 9/26/52 bağlamını ve mevcut bulut grafiğini gösterir. Senkou çizgileri 26 mum ileri, Chikou 26 mum geri konumlandırılır; ileri seviyeler fiyat tahmini değildir. Mevcut bulut geçmiş hesaplamalardan alınır. Kayıtlı ölçüm kuralları değişmez; yeni Binance isteği yapılmaz.
