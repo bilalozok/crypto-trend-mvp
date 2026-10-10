@@ -23,10 +23,12 @@ h1{color:#1e40af;border-left:5px solid #1e40af;padding-left:12px}section{border-
 body{background:var(--page);color:var(--ink)}main,section{background:var(--surface);border-color:var(--line)}p,small,dt{color:var(--muted)}input,select{background:var(--surface);color:var(--ink);border-color:var(--line)}h1,h2,h3{color:#1e40af}:root[data-theme="dark"] h1,:root[data-theme="dark"] h2,:root[data-theme="dark"] h3{color:#8ab4ff}
 .theme-toggle{background:var(--surface);color:var(--ink);border:1px solid var(--line);font-size:13px;padding:8px 12px;cursor:pointer;width:auto;margin-bottom:12px}
 :root[data-theme="dark"] #status{background:#253143;color:#b2bfd2}:root[data-theme="dark"] #status[data-error=true]{background:#3d321f;color:#f0c374}:root[data-theme="dark"] svg text{fill:#b2bfd2}
+
+dialog.app-help{background:var(--surface,#fff);color:var(--ink,#142438);border:1px solid var(--line,#dce5ed);border-radius:14px;width:min(680px,calc(100vw - 28px));max-height:85vh;padding:22px;overflow:auto}dialog.app-help::backdrop{background:rgba(10,20,35,.55)}.help-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.app-help p{line-height:1.65}.help-button{padding:8px 12px}.direction-checks{min-width:280px;max-width:520px;white-space:normal}
 </style>
 </head>
 <body><main>
-<button id="theme-toggle" type="button" class="theme-toggle" aria-pressed="false">Koyu tema</button><h1>Formasyon inceleme</h1>
+<button id="page-help" type="button" class="secondary help-button" aria-haspopup="dialog">? Yardım</button><button id="theme-toggle" type="button" class="theme-toggle" aria-pressed="false">Koyu tema</button><h1>Formasyon inceleme</h1>
 <p>Binance Spot · USDT · 15m · Son 200 kapanmış mum</p>
 <section>
 <form id="form">
@@ -42,7 +44,7 @@ body{background:var(--page);color:var(--ink)}main,section{background:var(--surfa
 </section>
 <p><small>Deneysel geometrik kurallar. Grafik olasılık veya emir üretmez. Teyit durumu geçmiş kırılımı ifade eder; son kapanış ayrıca değerlendirilir. Seviyeler mum kapanışı ve teyit payıyla kontrol edilir. Tüm saatler Türkiye saatidir (Europe/Istanbul).</small></p>
 </main>
-<script>
+<dialog id="page-help-dialog" class="app-help" aria-labelledby="page-help-title"><div class="help-head"><h2 id="page-help-title">Yardım</h2><button id="page-help-close" type="button" class="secondary">Kapat</button></div><div id="page-help-body"></div></dialog><script>
 
 function applyDisplayTheme(theme,persist=false){const dark=theme==="dark";document.documentElement.dataset.theme=dark?"dark":"light";document.documentElement.style.colorScheme=dark?"dark":"light";const b=document.getElementById("theme-toggle");if(b){b.textContent=dark?"Beyaz tema":"Koyu tema";b.setAttribute("aria-pressed",String(dark))}if(persist){try{localStorage.setItem("crypto-trend-theme",dark?"dark":"light")}catch{}}}
 let initialDisplayTheme="light";try{initialDisplayTheme=localStorage.getItem("crypto-trend-theme")||"light"}catch{}applyDisplayTheme(initialDisplayTheme);
@@ -124,4 +126,16 @@ if(new URLSearchParams(location.search).get("embed")==="1"){
 }
 const initial=new URLSearchParams(location.search).get("symbol");if(initial)el("symbol").value=initial;
 load();
+
+const pageHelpTexts={"page": ["Coin grafiği", "Grafik kapanmış mumları ve tespit edilen formasyon seviyelerini gösterir. Tarihler Türkiye saatidir.", "Coin/vade ve veri zamanını kontrol et. Oluşuyor teyitsiz yapıdır; güncel teyitte kırılımın korunmasını ve hacim desteğini incele.", "Grafikte geçmiş bir çizgi görmek, o tarihte sinyalin bilindiğini kanıtlamaz. Güncel gösterge bağlamı için ana sayfada Göstergeler görünümünü aç."]};
+let pageHelpReturn=null;
+function openPageHelp(){const dialog=document.getElementById("page-help-dialog"),body=document.getElementById("page-help-body");let key="page";
+
+const lines=pageHelpTexts[key]||pageHelpTexts.coin;document.getElementById("page-help-title").textContent=lines[0];body.replaceChildren();for(const line of lines.slice(1)){const p=document.createElement("p");p.textContent=line;body.append(p)}
+
+pageHelpReturn=document.activeElement;dialog.showModal();document.getElementById("page-help-close").focus()}
+document.getElementById("page-help").onclick=openPageHelp;
+document.getElementById("page-help-close").onclick=()=>document.getElementById("page-help-dialog").close();
+document.getElementById("page-help-dialog").addEventListener("close",()=>pageHelpReturn?.focus());
+document.getElementById("page-help-dialog").addEventListener("click",event=>{if(event.target===event.currentTarget){const r=event.currentTarget.getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)event.currentTarget.close()}});
 </script></body></html>

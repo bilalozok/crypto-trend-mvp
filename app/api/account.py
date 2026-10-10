@@ -831,3 +831,41 @@ def delete_account(username: str, data: DeleteAccountInput, request: Request, db
     db.delete(target)
     db.commit()
     return dict(username=username, deleted=True)
+
+
+@router.get("/indicator-direction")
+def indicator_direction(
+    request: Request,
+    db: Db,
+    symbol: str = Query(..., min_length=1, max_length=64, pattern=r"^[A-Za-z0-9]+$"),
+):
+    from app.services.indicator_direction import coin
+
+    current(db, request)
+    result = coin(db, symbol.upper(), now_ms())
+    if result is None:
+        raise HTTPException(status_code=404, detail="Aktif coin bulunamadı.")
+    return result
+
+
+@router.get("/indicator-screen")
+def indicator_screen(
+    request: Request,
+    db: Db,
+    scope: Literal["market", "held"] = "market",
+    interval: Literal["15m", "4h", "1d"] = "15m",
+    offset: int = Query(0, ge=0, le=100000),
+    as_of: int | None = Query(None, ge=0),
+):
+    from app.services.indicator_direction import screen
+
+    account = current(db, request)
+    stamp = now_ms()
+    if as_of is not None:
+        if as_of > stamp or stamp - as_of > 3600000:
+            raise HTTPException(
+                status_code=422,
+                detail="Tarama zamanı geçersiz veya bir saatten eski; yeniden başlat.",
+            )
+        stamp = as_of
+    return screen(db, account.id, scope, interval, stamp, offset)
