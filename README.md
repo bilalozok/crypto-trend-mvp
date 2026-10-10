@@ -1229,3 +1229,5 @@ Tüm ana çalışma ekranları amaca göre alt sekmelere ayrılır: coin grafik/
 Görsel bölüm ayrımı: piyasa ekranları mavi, kişisel takip mor, yönetim amber vurgu kullanır. Açılır alanlar çerçeveli renkli başlık ve +/− işaretiyle görünür; seçili sekmeler dolu renkle ayrılır. Yükseliş/düşüş ve kâr/zarar renkleri korunur.
 
 Bölüm içi ana ve ikincil eylem butonları çalışma alanının vurgu rengini kullanır; dinamik coin bağlantıları ve filtre kartları da aynı paleti izler.
+
+Referans analiz düzeni: solda gezinme, belirgin sayaç kartları ve yuvarlatılmış tablo/grafik panelleri. Beyaz tema varsayılandır; üst paneldeki koyu/beyaz tema seçimi tarayıcıda saklanır. Grafik ve giriş sayfaları aynı tercihi kullanır. Mobilde gezinme üstte yatay olur.

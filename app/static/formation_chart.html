@@ -17,10 +17,16 @@ dt{font-size:12px;color:#526172}dd{margin:5px 0;font-weight:600}.legend{display:
 .blue{color:#245fd0}.red{color:#c93b47}.purple{color:#8259b8}.green{color:#13816b}
 small{color:#526172}#reason{margin-bottom:0}
 h1{color:#1e40af;border-left:5px solid #1e40af;padding-left:12px}section{border-top:3px solid #b8cdf5}h2,h3{color:#1e40af}input:focus-visible,select:focus-visible,button:focus-visible{outline:3px solid #2563eb;outline-offset:3px}
+
+:root{--surface:#fff;--page:#f7f9fc;--ink:#1d2c42;--muted:#56687e;--line:#dce4ee}
+:root[data-theme="dark"]{--surface:#1b2432;--page:#101722;--ink:#e7edf7;--muted:#b2bfd2;--line:#3a485d}
+body{background:var(--page);color:var(--ink)}main,section{background:var(--surface);border-color:var(--line)}p,small,dt{color:var(--muted)}input,select{background:var(--surface);color:var(--ink);border-color:var(--line)}h1,h2,h3{color:#1e40af}:root[data-theme="dark"] h1,:root[data-theme="dark"] h2,:root[data-theme="dark"] h3{color:#8ab4ff}
+.theme-toggle{background:var(--surface);color:var(--ink);border:1px solid var(--line);font-size:13px;padding:8px 12px;cursor:pointer;width:auto;margin-bottom:12px}
+:root[data-theme="dark"] #status{background:#253143;color:#b2bfd2}:root[data-theme="dark"] #status[data-error=true]{background:#3d321f;color:#f0c374}:root[data-theme="dark"] svg text{fill:#b2bfd2}
 </style>
 </head>
 <body><main>
-<h1>Formasyon inceleme</h1>
+<button id="theme-toggle" type="button" class="theme-toggle" aria-pressed="false">Koyu tema</button><h1>Formasyon inceleme</h1>
 <p>Binance Spot · USDT · 15m · Son 200 kapanmış mum</p>
 <section>
 <form id="form">
@@ -37,6 +43,12 @@ h1{color:#1e40af;border-left:5px solid #1e40af;padding-left:12px}section{border-
 <p><small>Deneysel geometrik kurallar. Grafik olasılık veya emir üretmez. Teyit durumu geçmiş kırılımı ifade eder; son kapanış ayrıca değerlendirilir. Seviyeler mum kapanışı ve teyit payıyla kontrol edilir. Tüm saatler Türkiye saatidir (Europe/Istanbul).</small></p>
 </main>
 <script>
+
+function applyDisplayTheme(theme,persist=false){const dark=theme==="dark";document.documentElement.dataset.theme=dark?"dark":"light";document.documentElement.style.colorScheme=dark?"dark":"light";const b=document.getElementById("theme-toggle");if(b){b.textContent=dark?"Beyaz tema":"Koyu tema";b.setAttribute("aria-pressed",String(dark))}if(persist){try{localStorage.setItem("crypto-trend-theme",dark?"dark":"light")}catch{}}}
+let initialDisplayTheme="light";try{initialDisplayTheme=localStorage.getItem("crypto-trend-theme")||"light"}catch{}applyDisplayTheme(initialDisplayTheme);
+const themeButton=document.getElementById("theme-toggle");if(themeButton)themeButton.onclick=()=>applyDisplayTheme(document.documentElement.dataset.theme==="dark"?"light":"dark",true);
+window.addEventListener("storage",e=>{if(e.key==="crypto-trend-theme")applyDisplayTheme(e.newValue||"light")});
+
 window.addEventListener("pageshow",e=>{if(e.persisted)location.reload()});
 "use strict";
 const el=id=>document.getElementById(id), NS="http://www.w3.org/2000/svg";

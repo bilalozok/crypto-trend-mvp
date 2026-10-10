@@ -104,3 +104,15 @@ def test_task_views_cover_all_workspaces_without_duplicate_controls(client):
     for element, (group, key) in expected.items():
         assert "view-" + group + "-pane-" + key in layout.parents[element]
         assert 'aria-controls="view-' + group + "-pane-" + key + '"' in html
+
+
+def test_reference_shell_and_theme_control_preserve_navigation(client):
+    html = client.get("/analysis/binance/dashboard").text
+    layout = Layout()
+    layout.feed(html)
+    assert all(count == 1 for count in Counter(layout.ids).values())
+    assert "rail-public" in layout.parents["public-tabs"]
+    assert "rail-private" in layout.parents["private-tabs"]
+    assert 'id="theme-toggle"' in html
+    assert 'aria-label="Ana gezinme"' in html
+    assert "crypto-trend-theme" in html
