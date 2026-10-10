@@ -1233,3 +1233,5 @@ Bölüm içi ana ve ikincil eylem butonları çalışma alanının vurgu rengini
 Referans analiz düzeni: solda gezinme, belirgin sayaç kartları ve yuvarlatılmış tablo/grafik panelleri. Beyaz tema varsayılandır; üst paneldeki koyu/beyaz tema seçimi tarayıcıda saklanır. Grafik ve giriş sayfaları aynı tercihi kullanır. Mobilde gezinme üstte yatay olur.
 
 Üst çalışma alanı başlığı kompakt tutulur; tekrarlayan çalışma alanı açıklamaları kaldırılmıştır.
+
+Sol menü daraltıldığında simgelerle gösterilir ve içerik alanı genişler; menü tercihi tarayıcıda saklanır.
