@@ -1237,3 +1237,5 @@ Referans analiz düzeni: solda gezinme, belirgin sayaç kartları ve yuvarlatıl
 Sol menü daraltıldığında simgelerle gösterilir ve içerik alanı genişler; menü tercihi tarayıcıda saklanır.
 
 Coin analizi Göstergeler görünümü Ichimoku 9/26/52 bağlamını ve mevcut bulut grafiğini gösterir. Senkou çizgileri 26 mum ileri, Chikou 26 mum geri konumlandırılır; ileri seviyeler fiyat tahmini değildir. Mevcut bulut geçmiş hesaplamalardan alınır. Kayıtlı ölçüm kuralları değişmez; yeni Binance isteği yapılmaz.
+
+CMF21 ve MFI14 kapanmış mumlardan hesaplanır. Aday sıralamasında Ichimoku en fazla ±5, ortak CMF/MFI grubu en fazla ±5 puan etkiler; temel adaylık koşulları değişmez. Uygun veri yoksa ek puan uygulanmaz. Son puan 0–100 aralığında tutulur; ağırlıklar deneysel olup kalibre edilmiş başarı olasılığı değildir. Sıralama bağlamı tarama payloadında saklanır; eski kayıtlar değiştirilmez. Yeni aday kural sürümü önceki gözlemlerle doğrudan karşılaştırılmaz.

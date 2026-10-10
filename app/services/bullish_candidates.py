@@ -43,25 +43,38 @@ def rank_match(row, max_age=4, min_ratio=1.5, include_conflicting=False):
     ranked.sort(key=lambda item: (-item[0], item[1]["pattern"]))
     raw, primary, parts = ranked[0]
     penalty = 30 if down else 0
-    return (
-        dict(
-            symbol=row["symbol"],
-            quote_volume_24h=row["quote_volume_24h"],
-            evidence_score=max(0, raw - penalty),
-            score_components=parts,
-            conflict_penalty=penalty,
-            primary_pattern=primary,
-            supporting_patterns=up,
-            opposing_patterns=down,
-            commentary=(
-                "Güncel düşüş teyidi de var; çelişki cezası uygulandı."
-                if down
-                else "Güncel, hacim destekli yükseliş teyidi var; güncel düşüş teyidi yok."
-            ),
-            chart_path="/analysis/binance/chart?symbol=" + row["symbol"],
+    context = row.get("ranking_indicator_context")
+    result = dict(
+        symbol=row["symbol"],
+        quote_volume_24h=row["quote_volume_24h"],
+        evidence_score=max(0, raw - penalty),
+        score_components=parts,
+        conflict_penalty=penalty,
+        primary_pattern=primary,
+        supporting_patterns=up,
+        opposing_patterns=down,
+        commentary=(
+            "Güncel düşüş teyidi de var; çelişki cezası uygulandı."
+            if down
+            else "Güncel, hacim destekli yükseliş teyidi var; güncel düşüş teyidi yok."
         ),
-        None,
+        chart_path="/analysis/binance/chart?symbol=" + row["symbol"],
     )
+    if context is not None:
+        apply_indicator_ranking(result, context)
+    return result, None
+
+
+def apply_indicator_ranking(item, context):
+    base = item["evidence_score"]
+    adjustment = context.get("adjustment", 0) if context.get("status") == "ready" else 0
+    item.update(
+        base_evidence_score=base,
+        indicator_adjustment=adjustment,
+        ranking_indicator_context=context,
+        evidence_score=min(100, max(0, base + adjustment)),
+    )
+    return item
 
 
 def candidates(
@@ -96,6 +109,11 @@ def candidates(
             excluded[reason] += 1
         else:
             ranked.append(item)
+    from app.services.money_flow_context import batch_context
+
+    contexts = batch_context(db, [r["symbol"] for r in ranked], stamp)
+    for item in ranked:
+        apply_indicator_ranking(item, contexts[item["symbol"]])
     ranked.sort(key=lambda r: (-r["evidence_score"], -r["quote_volume_24h"], r["symbol"]))
     return dict(
         exchange="binance",
@@ -103,7 +121,7 @@ def candidates(
         interval="15m",
         experimental=True,
         method_version=page["method_version"],
-        ranking_version="bullish_evidence_v1",
+        ranking_version="bullish_evidence_moneyflow_v2",
         as_of=page["as_of"],
         candle_close_time=timestamp(stamp // BAR * BAR),
         candidate_limit=candidate_limit,

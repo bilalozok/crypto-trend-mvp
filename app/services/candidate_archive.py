@@ -14,9 +14,10 @@ from app.db.models.binance_spot import BinanceSpotCandle, BinanceSpotSymbol
 from app.db.models.candidate_scan import CandidateScan
 from app.services import formations, portfolio_technical
 from app.services.binance_coverage import STABLECOIN_BASES
-from app.services.bullish_candidates import rank_match
+from app.services.bullish_candidates import apply_indicator_ranking, rank_match
 from app.services.coin_report import build_report
 from app.services.forward_tracking import rules_hash
+from app.services.money_flow_context import candidate_context
 
 REASONS = {
     "no_current_confirmation": (
@@ -32,6 +33,9 @@ def archive_hash():
     digest = hashlib.sha256(rules_hash().encode())
     for name in (
         "candidate_archive.py",
+        "bullish_candidates.py",
+        "money_flow_context.py",
+        "ichimoku_context.py",
         "portfolio_technical.py",
         "portfolio_timeframes.py",
         "portfolio_commentary.py",
@@ -119,6 +123,8 @@ def collect(db, stamp):
             )
             if not any(p["current_confirmation"] for p in report["patterns"]):
                 item, reason = None, "no_current_confirmation"
+            if item is not None:
+                apply_indicator_ranking(item, candidate_context(grouped[symbol.symbol], stamp))
         note = (
             "Aday koşullarını karşılıyor."
             if item is not None
@@ -135,7 +141,7 @@ def collect(db, stamp):
             )
         )
         if item is not None:
-            # Existing ranking is preserved. Other intervals are context, not score inputs.
+            # Only same-close 15m indicators affect ranking; other intervals remain context.
             view = portfolio_technical.technical(db, symbol.symbol, stamp)
             item.update(
                 horizons=view["horizons"],
@@ -155,7 +161,7 @@ def collect(db, stamp):
     return portfolio_technical.json_ready(
         dict(
             version="saved_candidate_scan_v1",
-            ranking_version="bullish_evidence_v1",
+            ranking_version="bullish_evidence_moneyflow_v2",
             as_of=formations.timestamp(stamp),
             candle_close_time=formations.timestamp(stamp // formations.BAR * formations.BAR),
             filters=dict(

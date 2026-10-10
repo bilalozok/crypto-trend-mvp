@@ -11,8 +11,9 @@ from app.db.models.binance_spot import BinanceSpotCandle
 from app.db.models.candidate_observation import CandidateObservation
 from app.db.models.candidate_scan import CandidateScan
 from app.services import candidate_archive, formations
-from app.services.bullish_candidates import rank_match
+from app.services.bullish_candidates import apply_indicator_ranking, rank_match
 from app.services.coin_report import build_report
+from app.services.money_flow_context import candidate_context
 
 
 def observe_symbol(db, symbol, stamp):
@@ -61,10 +62,16 @@ def observe_symbol(db, symbol, stamp):
     if analysis["status"] == "ready":
         report = build_report(analysis)
         item, reason = rank_match(
-            dict(symbol=symbol, quote_volume_24h=0, patterns=report["patterns"])
+            dict(
+                symbol=symbol,
+                quote_volume_24h=0,
+                patterns=report["patterns"],
+            )
         )
         if not any(p["current_confirmation"] for p in report["patterns"]):
             item, reason = None, "no_current_confirmation"
+        if item is not None:
+            apply_indicator_ranking(item, candidate_context(rows, stamp))
         base.update(
             qualified=item is not None,
             close_price=format(rows[-1].close, ".15g"),
