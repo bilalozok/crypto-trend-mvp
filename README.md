@@ -1231,3 +1231,5 @@ Görsel bölüm ayrımı: piyasa ekranları mavi, kişisel takip mor, yönetim a
 Bölüm içi ana ve ikincil eylem butonları çalışma alanının vurgu rengini kullanır; dinamik coin bağlantıları ve filtre kartları da aynı paleti izler.
 
 Referans analiz düzeni: solda gezinme, belirgin sayaç kartları ve yuvarlatılmış tablo/grafik panelleri. Beyaz tema varsayılandır; üst paneldeki koyu/beyaz tema seçimi tarayıcıda saklanır. Grafik ve giriş sayfaları aynı tercihi kullanır. Mobilde gezinme üstte yatay olur.
+
+Üst çalışma alanı başlığı kompakt tutulur; tekrarlayan çalışma alanı açıklamaları kaldırılmıştır.
