@@ -48,7 +48,7 @@ def record(**values):
         id=str(uuid4()),
         symbol="BTCUSDT",
         purchased_at="2026-10-05T18:00:00+03:00",
-        currency="TRY",
+        currency="USDT",
         unit_price="0.1",
         quantity="0.2",
         fee="0.001",
@@ -121,10 +121,9 @@ def test_exact_decimals_currency_groups_and_idempotent_save(private_client):
         private_client.post("/account/purchases", json=second, headers=headers).status_code == 201
     )
     groups = private_client.get("/account/purchases/summary").json()["groups"]
-    assert {g["currency"] for g in groups} == {"TRY", "USDT"}
-    by_currency = {g["currency"]: g for g in groups}
-    assert by_currency["TRY"]["average_cost"] == "0.105000000000000000"
-    assert by_currency["USDT"]["average_cost"] == "10.500000000000000000"
+    assert {g["currency"] for g in groups} == {"USDT"}
+    assert len(groups) == 1
+    assert groups[0]["average_cost"] == "9.555000000000000000"
     assert len(private_client.get("/account/purchases").json()["purchases"]) == 2
 
 

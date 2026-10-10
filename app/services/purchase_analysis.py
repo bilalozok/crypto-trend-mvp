@@ -1,17 +1,13 @@
 """Private acquisition valuation using aligned, closed public market prices."""
 
-import logging
 from decimal import Decimal, InvalidOperation, localcontext
-from functools import lru_cache
 
-import requests
 from sqlalchemy import select
 
 from app.db.models.binance_spot import BinanceSpotCandle, BinanceSpotSymbol
 from app.services.formations import timestamp
 
 BAR = 900_000
-logger = logging.getLogger(__name__)
 
 
 def number(value):
@@ -38,59 +34,15 @@ def valid_candle(row):
     return low <= min(opened, closed) <= max(opened, closed) <= high
 
 
-@lru_cache(maxsize=8)
-def try_rate(close_ms, retry_bucket):
-    # Public independent FX market: no personal data or Binance proxy is used.
-    url = "https://graph-api.btcturk.com/v1/klines/history"
-    reason = "unknown"
-    try:
-        response = requests.get(
-            url,
-            params={
-                "symbol": "USDTTRY",
-                "resolution": 15,
-                "from": (close_ms - BAR) // 1000,
-                "to": close_ms // 1000 - 1,
-            },
-            timeout=(3, 4),
-            allow_redirects=False,
-        )
-        if response.status_code != 200:
-            reason = "http_" + str(response.status_code)
-        else:
-            payload = response.json()
-            if not isinstance(payload, dict) or payload.get("s") != "ok":
-                reason = "no_data"
-            else:
-                columns = [payload.get(key) for key in ("t", "o", "h", "l", "c")]
-                if not all(isinstance(column, list) and len(column) == 1 for column in columns):
-                    reason = "invalid_shape"
-                elif columns[0][0] != (close_ms - BAR) // 1000:
-                    reason = "wrong_candle_time"
-                else:
-                    opened, high, low, rate = (number(column[0]) for column in columns[1:])
-                    if (
-                        all(value is not None for value in (rate, opened, high, low))
-                        and low <= min(opened, rate) <= max(opened, rate) <= high
-                    ):
-                        return dict(
-                            price=format(rate, "f"),
-                            candle_close_time=timestamp(close_ms),
-                            source="BtcTurk USDT/TRY · kapanmış 15m mum",
-                        )
-                    reason = "invalid_price"
-    except (requests.RequestException, ValueError, TypeError, IndexError, OverflowError) as exc:
-        reason = type(exc).__name__
-    logger.warning("try_rate_unavailable source=%s reason=%s close_ms=%s", url, reason, close_ms)
-    return None
-
-
 def valuation(db, rows, stamp):
     close_ms = stamp // BAR * BAR
+    excluded = sum(row.currency != "USDT" for row in rows)
     groups = {}
     with localcontext() as ctx:
         ctx.prec = 80
         for row in rows:
+            if row.currency != "USDT":
+                continue
             group = groups.setdefault(
                 (row.symbol, row.currency),
                 dict(quantity=Decimal(0), cost=Decimal(0), purchases=0, latest_purchase=0),
@@ -99,7 +51,6 @@ def valuation(db, rows, stamp):
             group["cost"] += Decimal(row.quantity) * Decimal(row.unit_price) + Decimal(row.fee)
             group["purchases"] += 1
             group["latest_purchase"] = max(group["latest_purchase"], row.purchased_ms)
-        rate = try_rate(close_ms, stamp // 30_000) if any(c == "TRY" for _, c in groups) else None
         symbols = {s for s, _ in groups}
         candles = {
             c.symbol: c
@@ -137,14 +88,8 @@ def valuation(db, rows, stamp):
                 item["note"] = "Aktif parite için güncel kapanmış fiyat yok; değer hesaplanmadı."
             elif group["latest_purchase"] > close_ms:
                 item["note"] = "Alış son fiyat zamanından sonra; yeni mum kapanışı bekleniyor."
-            elif currency == "TRY" and rate is None:
-                item["note"] = (
-                    "Aynı zamana ait USDT/TL fiyatı doğrulanamadı; TL değer hesaplanmadı."
-                )
             else:
                 price = number(candle.close)
-                if currency == "TRY":
-                    price *= Decimal(rate["price"])
                 value = price * group["quantity"]
                 change = value - group["cost"]
                 if change > 0:
@@ -189,13 +134,13 @@ def valuation(db, rows, stamp):
         as_of=timestamp(stamp),
         target_close_time=timestamp(close_ms),
         price_source="Binance Spot USDT · saklanan kapanmış 15m mum",
-        try_rate=rate,
+        excluded_non_usdt_purchases=excluded,
         groups=result,
         totals=totals,
         note=(
             "Seçilen alışlar elde tutuluyor varsayılır. Satışlar düşülmez; "
-            "nakit ve portföy getirisi değildir. TL ve USDT toplamları ayrıdır. "
-            "TL fiyatı iki piyasadan türetilir; banka USD/TL kuru veya işlem teklifi değildir."
+            "nakit ve portföy getirisi değildir. Yalnızca USDT alışları hesaplanır. "
+            "Eski diğer para birimindeki kayıtlar dönüştürülmez; hesaplara dahil edilmez."
         ),
     )
 
@@ -238,7 +183,7 @@ def price_range(db, symbol, begin, finish, stamp):
             dict(time=timestamp(r.open_time + BAR), price=money(number(r.close))) for r in valid
         ],
         note=(
-            "Grafik USDT fiyatıdır; TL alış fiyatıyla doğrudan karşılaştırılmaz. "
+            "Grafik ve fiyat analizi USDT cinsindedir. "
             "Tam aralıktaki ilk açılıştan son kapanışa değişim; alış getirisi değildir. "
             "Yalnızca tamamen aralık içinde kapanmış 15m mumlar kullanılır."
         ),

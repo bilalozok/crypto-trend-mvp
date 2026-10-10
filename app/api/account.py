@@ -44,7 +44,7 @@ class PurchaseInput(BaseModel):
     id: UUID
     symbol: str = Field(min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9]+$")
     purchased_at: datetime
-    currency: Literal["TRY", "USDT"]
+    currency: Literal["USDT"]
     unit_price: Decimal = Field(gt=0, le=Decimal("1e12"), max_digits=38, decimal_places=18)
     quantity: Decimal = Field(gt=0, le=Decimal("1e12"), max_digits=38, decimal_places=18)
     fee: Decimal = Field(
@@ -250,6 +250,8 @@ def purchase_summary(
     with localcontext() as ctx:
         ctx.prec = 80
         for row in rows:
+            if row.currency != "USDT":
+                continue
             key = (row.symbol, row.currency)
             group = groups.setdefault(key, dict(quantity=Decimal(0), cost=Decimal(0), count=0))
             group["quantity"] += Decimal(row.quantity)
@@ -266,7 +268,11 @@ def purchase_summary(
             )
             for (symbol, currency), g in sorted(groups.items())
         ]
-    return dict(groups=result, note="Komisyon dahil alış maliyeti; satış ve güncel değer içermez.")
+    return dict(
+        excluded_non_usdt_purchases=sum(row.currency != "USDT" for row in rows),
+        groups=result,
+        note="Komisyon dahil alış maliyeti; satış ve güncel değer içermez.",
+    )
 
 
 @router.get("/purchases/valuation")

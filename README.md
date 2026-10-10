@@ -811,7 +811,7 @@ are descriptions, not personal saved notes or order instructions. They do not
 change stored reports, signal capture rules, scores, or migrations. Personal
 TL/USDT purchases and protected account access are a subsequent implementation.
 
-### Private purchase ledger (TL / USDT)
+### Private purchase ledger (USDT)
 
 Apply migration `bf15c2026e01` before deployment. It adds account/session/login-limit
 and purchase tables, preserving all candles, signals and reports. Accounts are
@@ -837,8 +837,8 @@ The Aldıklarım tab supports owner-scoped purchase creation/listing/deletion,
 start-inclusive/end-exclusive Turkey-time date filters and pagination. All amounts
 are validated finite decimal strings (up to 18 decimal places), preserved without
 binary float conversion. Cost equals price times coin quantity plus fee in the
-selected currency. Exact totals are kept; average unit cost is rounded to 18
-places. Currency groups are separate, and selected-period purchases are not
+USDT. Exact totals are kept; average unit cost is rounded to 18
+places. Only USDT costs are summarized, and selected-period purchases are not
 presented as the entire portfolio. A repeated purchase UUID with identical fields
 is idempotent. Personal notes are rendered as text and scoped to the account.
 
@@ -856,27 +856,9 @@ filtresi alış kayıtlarını seçer; geçmiş değerleme tarihi seçmez. Alı�
 maliyete dahil, satış masrafları hariçtir. Satışlar düşülmediğinden kayıtlı alış
 adetlerinin elde tutulduğu varsayılır; gerçek bakiye/portföy getirisi değildir.
 
-TL için aynı kapanışa ait **BtcTurk USDT/TRY** kline fiyatı kullanılır.
-Kaynak: https://docs.btcturk.com/docs/public-endpoints/get-kline-data/;
-`graph-api.btcturk.com/v1/klines/history`, `symbol=USDTTRY`, `resolution=15`.
-`from`/`to` saniyedir; dönen `t` açılış zamanı istenen 15m mumla birebir
-örtüşmelidir. OHLC pozitif/sonlu/tutarlı olmalı; diziler eşit uzunlukta olmalıdır. Açılış zamanı tam eşleşen tek mum seçilir;
-yanıtta gelen sonraki mum değerlemeye dahil edilmez. Eksik veya tekrarlanan
-eşleşme reddedilir.
-Coin fiyatı Binance Spot, kur ayrı BtcTurk piyasasıdır; kaynak ekranda gösterilir.
-Binance TR bağlantısı Railway'de HTTP 451 döndüğü için bağımsız veri sağlayıcısı
-kullanılır. Başarısız sorgu, eksik güncel coin fiyatı, pasif parite veya son
-fiyat zamanından sonraki alış için değer null kalır. Herhangi bir grup
-hesaplanamıyorsa o para biriminin toplam piyasa değeri ve farkı da null kalır.
-TL ve USDT maliyetleri/toplamları karıştırılmaz; USDT banka USD/TL kuru değildir.
-İki piyasadan türetilen TL değeri işlem yapılabilir teklif değildir. Dış servise
-yalnızca USDT/TRY paritesi ve ortak mum zaman aralığı gönderilir.
-
-`GET /account/purchases/valuation?start=...&end=...` mevcut özel hesap oturumunu
-ister; en fazla 10.000 kayıt seçer. Fiyat/kur zamanı ve kaynak yanıtta gösterilir.
-Tutarlar Decimal ile hesaplanır ve JSON'da string kalır; yüzdeler 8 ondalığa
-yuvarlanır. TL kur sorguları 30 saniyelik kısa, süreç içi ve sınırlı önbellek
-kullanır; hata halinde sonraki aralıkta yeniden denenir.
+Yalnızca USDT alışları hesaplanır. Eski TRY kayıtları korunur ve kapsam dışı sayısı gösterilir; döviz kuru çağrısı veya otomatik dönüşüm yapılmaz.
+Eksik güncel fiyat, pasif parite veya fiyat zamanından sonraki alış için değer null kalır. Eksik bir grup varsa toplam değer de null kalır.
+`GET /account/purchases/valuation?start=...&end=...` oturum gerektirir ve en fazla 10.000 kayıt seçer. Decimal tutarlar string kalır; yüzdeler 8 ondalığa yuvarlanır.
 
 **Aralığı analiz et** ayrı başlangıç/bitiş ile (en fazla 31 gün) saklanan USDT
 fiyatlarını ve o hesaba ait alış zamanlarını gösterir.
@@ -1241,3 +1223,5 @@ Coin analizi Göstergeler görünümü Ichimoku 9/26/52 bağlamını ve mevcut b
 CMF21 ve MFI14 kapanmış mumlardan hesaplanır. Aday sıralamasında Ichimoku en fazla ±5, ortak CMF/MFI grubu en fazla ±5 puan etkiler; temel adaylık koşulları değişmez. Uygun veri yoksa ek puan uygulanmaz. Son puan 0–100 aralığında tutulur; ağırlıklar deneysel olup kalibre edilmiş başarı olasılığı değildir. Sıralama bağlamı tarama payloadında saklanır; eski kayıtlar değiştirilmez. Yeni aday kural sürümü önceki gözlemlerle doğrudan karşılaştırılmaz.
 
 Her ana görünümde Yardım düğmesi içerik, kullanım ve yorumlama sınırlarını açıklayan erişilebilir pencereyi açar. Adaylardaki Yön uyumu incelemesi güncel üç vadeyi arşivden ayrı değerlendirir. Gösterge filtresi piyasa genelinde yükseliş ve yalnızca kullanıcının alış kayıtlarında düşüş koşullarını seçilen vadede, 100 coinlik sayfalarla okur. Tüm eşleşme filtreleri yardımda açıklanır; Fibonacci %61,8 filtresi deneysel olup bağımsız teyit değildir. Satışlar düşülmez. Eksik/eski veri eşleşme sayılmaz. Yeni Binance çağrısı veya migration yoktur.
+
+Yeni alış kayıtları ve tüm maliyet/değer analizleri yalnızca USDT kullanır. Eski TRY kayıtları saklanır, otomatik çevrilmez ve USDT hesaplarına dahil edilmez. Değerleme döviz kuru servisi çağırmaz. Migration gerekli değildir.
