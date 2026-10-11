@@ -1,4 +1,4 @@
-"""Run once every five minutes; download prices only for live simulations."""
+"""Run once every five minutes; download prices for simulations retained by their owners."""
 
 import logging
 import math
@@ -67,7 +67,7 @@ def collect(session_factory, budget=90, limit=100):
             .join(BinanceSpotSymbol, BinanceSpotSymbol.symbol == Simulation.symbol)
             .outerjoin(latest, latest.c.symbol == Simulation.symbol)
             .where(
-                Simulation.state.in_(("pending_entry", "open", "pending_exit")),
+                Simulation.state.in_(("pending_entry", "open", "pending_exit", "closed")),
                 BinanceSpotSymbol.active.is_(True),
             )
             .order_by(latest.c.last.asc().nullsfirst(), Simulation.symbol)

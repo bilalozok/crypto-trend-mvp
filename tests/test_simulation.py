@@ -348,3 +348,41 @@ def test_listing_refreshes_live_formations_without_changing_selection(private_cl
     assert Decimal(data["profit"]) == Decimal(data["return_pct"])
     detail = private_client.get("/account/simulations/" + row["id"]).json()
     assert "current_formation" not in detail["selection"]
+
+
+def test_price_chart_keeps_sale_marker_and_later_prices(private_client, monkeypatch):
+    h = auth(private_client)
+    row = private_client.post("/account/simulations", headers=h, json=order()).json()
+    path = "/account/simulations/" + row["id"]
+    candle(STAMP + 300000, 10)
+    monkeypatch.setattr("app.api.account.now_ms", lambda: STAMP + 300000)
+    assert private_client.get(path).json()["state"] == "open"
+    private_client.post(path + "/sell", headers=h, json={})
+    candle(STAMP + 600000, 11)
+    monkeypatch.setattr("app.api.account.now_ms", lambda: STAMP + 600000)
+    sold = private_client.get(path).json()
+    candle(STAMP + 900000, 15)
+    monkeypatch.setattr("app.api.account.now_ms", lambda: STAMP + 900000)
+    after = private_client.get(path).json()
+    assert after["profit"] == sold["profit"]
+    chart = after["price_history"]
+    assert chart["entry"]["price"] == after["entry_price"]
+    assert chart["sale"]["price"] == sold["exit_price"]
+    assert chart["points"][-1]["price"] == "15.0"
+    assert chart["points"][-1]["at"] > chart["sale"]["at"]
+    assert private_client.delete(path, headers=h).status_code == 200
+    assert private_client.get(path).status_code == 404
+
+
+def test_price_chart_reports_gap_and_bounds_long_history(private_client):
+    h = auth(private_client)
+    response = private_client.post("/account/simulations", headers=h, json=order()).json()
+    candle(STAMP + 300000, 10)
+    candle(STAMP + 900000, 12)
+    with SessionLocal() as db:
+        row = db.get(Simulation, response["id"])
+        chart = simulation.price_history(db, row, STAMP + 900000)
+        assert chart["points"][-1]["gap_before"] is True
+        chart = simulation.price_history(db, row, STAMP + 300000 * 100000)
+        assert chart["sample_minutes"] >= 500
+        assert len(chart["points"]) <= 1001

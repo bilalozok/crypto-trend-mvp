@@ -1267,3 +1267,14 @@ bütçede iki sayı eşittir. Açık işlemlerin son güncel 15m formasyonu dü�
 satır kırmızı vurgulanır. Oluşan yapı teyitsiz olarak etiketlenir; aynı zamandaki
 karşıt yönler veya eski/eksik veri düşüş uyarısı sayılmaz. Bu vurgu otomatik satış
 yapmaz ve önceki karar kayıtlarını değiştirmez.
+
+### Alıştan satış sonrasına fiyat grafiği
+
+Simülasyonda Grafik ve bağlam, alıştan başlayan kayıtlı 5m fiyat grafiğini açar.
+Alış yeşil, satış kırmızı işaretlidir; işlem fiyatları komisyon/kayma varsayımlarıyla
+piyasa kapanışından farklı olabilir. Satılmış coinler de kayıt silinene kadar
+5m worker tarafından toplanır. Satış sonrası grafik devam eder, gerçekleşen
+kâr/zarar sabit kalır. Aynı coin birden fazla kayıt için bir kez toplanır.
+Uzun geçmiş en fazla yaklaşık 1000 zaman aralığının son kapanışıyla çizilir;
+eksik dönemler uydurulmaz. Eski veri worker'ın ilk 1000 mumluk penceresiyle sınırlı
+olabilir. Hem web hem simulation worker yeni commit'i kullanmalıdır.

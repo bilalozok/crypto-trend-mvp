@@ -4,7 +4,7 @@ from decimal import Decimal, localcontext
 
 from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
-from sqlalchemy import func, select
+from sqlalchemy import BigInteger, cast, func, select
 
 from app.db.models.account import Account
 from app.db.models.binance_spot import BinanceSpotCandle, BinanceSpotSymbol
@@ -306,10 +306,69 @@ def out(db, row, stamp, detail=False):
             exit_context=row.exit_context,
             current_context=latest,
             observations=row.observations,
+            price_history=price_history(db, row, stamp),
             history_note="İnceleme/yenileme anları saklanır; kesintisiz geçmiş değildir. "
             "Son 192 gözlem korunur, alış/satış bağlamları ayrı saklanır.",
         )
     return result
+
+
+def price_history(db, row, stamp):
+    """Bounded chart points covering the whole retained post-entry price history."""
+    end = stamp // EXECUTION_BAR * EXECUTION_BAR
+    start = row.entry_ms
+    span = max(EXECUTION_BAR, end - start)
+    step = max(1, (span + EXECUTION_BAR * 1000 - 1) // (EXECUTION_BAR * 1000)) * EXECUTION_BAR
+    bucket = cast(SimulationCandle.open_time / step, BigInteger)
+    grouped = (
+        select(
+            func.max(SimulationCandle.open_time).label("last"),
+            func.min(SimulationCandle.open_time).label("first"),
+            func.count().label("count"),
+        )
+        .where(
+            SimulationCandle.symbol == row.symbol,
+            SimulationCandle.open_time + EXECUTION_BAR >= start,
+            SimulationCandle.open_time + EXECUTION_BAR <= end,
+        )
+        .group_by(bucket)
+        .subquery()
+    )
+    rows = db.execute(
+        select(SimulationCandle, grouped.c.first, grouped.c.count)
+        .join(grouped, SimulationCandle.open_time == grouped.c.last)
+        .where(SimulationCandle.symbol == row.symbol)
+        .order_by(SimulationCandle.open_time)
+    ).all()
+    points = []
+    previous = None
+    for candle, first, count in rows:
+        gap = (previous is not None and first > previous + EXECUTION_BAR) or count != (
+            candle.open_time - first
+        ) // EXECUTION_BAR + 1
+        if valid_candle(candle):
+            points.append(
+                dict(
+                    at=timestamp(candle.open_time + EXECUTION_BAR),
+                    price=str(candle.close),
+                    gap_before=gap,
+                )
+            )
+        previous = candle.open_time
+    return dict(
+        interval="5m",
+        sample_minutes=step // 60000,
+        points=points,
+        from_at=timestamp(start),
+        through_at=timestamp(end),
+        entry=dict(at=timestamp(row.entry_ms), price=row.entry_price),
+        sale=(
+            dict(at=timestamp(row.exit_ms), price=row.exit_price) if row.state == "closed" else None
+        ),
+        note="Kayıtlı 5m piyasa kapanışları; alış/satış işaretleri işlem fiyatıdır. "
+        "Uzun dönemler zaman aralığının son fiyatıyla örneklenir. "
+        "Eksik dönemler doldurulmaz; satış sonrası fiyat değişimi gerçekleşen sonucu değiştirmez.",
+    )
 
 
 def latest_formation(db, symbol, stamp):

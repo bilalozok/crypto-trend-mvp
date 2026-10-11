@@ -52,3 +52,21 @@ def test_worker_only_live_symbols_and_caches_closed_bar(private_client, monkeypa
     assert worker.collect(SessionLocal) == 0 and len(calls) == 1
     with SessionLocal() as db:
         assert db.get(SimulationCandle, ("BTCUSDT", STAMP - worker.BAR)) is not None
+
+
+def test_worker_follows_sold_coin_until_last_record_deleted(private_client, monkeypatch):
+    from app.db.models.simulation import Simulation
+
+    calls = []
+    monkeypatch.setattr(worker, "now_ms", lambda: STAMP)
+    monkeypatch.setattr(worker, "_get", lambda path, params: calls.append(params) or bars(STAMP))
+    h = auth(private_client)
+    row = private_client.post("/account/simulations", headers=h, json=order()).json()
+    with SessionLocal() as db:
+        position = db.get(Simulation, row["id"])
+        position.state = "closed"
+        db.commit()
+    assert worker.collect(SessionLocal) == 0 and len(calls) == 1
+    assert private_client.delete("/account/simulations/" + row["id"], headers=h).status_code == 200
+    monkeypatch.setattr(worker, "now_ms", lambda: STAMP + worker.BAR)
+    assert worker.collect(SessionLocal) == 0 and len(calls) == 1
