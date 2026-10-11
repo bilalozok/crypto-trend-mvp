@@ -1240,3 +1240,24 @@ Sanal alış, karar anından **sonraki** 15m kapanışında gerçekleşir. Aynı
 Elle gerçek alış referansı fiyat/zaman ile eklenebilir, miktar yine 100 USDT karşılığı normalize edilir. Gerçek deftere aktarılmaz; elle girilen fiyat kaymasız, komisyon %0,10 varsayımlıdır. Gerçek referansta satış fiyat/zamanı da elle girilebilir. Sonradan girilen gerçek referans önceden verilmiş tahmin sayılmaz.
 
 Alış seçimi, alış kapanışı, satış kararı ve satış kapanışı bağlamları ayrı saklanır. İncele ekranında üç vade formasyon/gösterge koşulları ve ham değerler açılabilir. Açık işlem yenilemeleri aynı 15m kapanışta tek gözlem oluşturur; son 192 inceleme anı tutulur. Grafik kesintisiz fiyat geçmişi değildir. En fazla 200 kayıt, sayfada 20 işlem. Kazanç oranı yalnızca kapanmış işlemlerde pozitif net sonuç oranıdır; sıfır kazanan sayılmaz. Açık sonuçlar tahminidir ve gerçekleşenlerden ayrılır. Silinen işlemler bütün özetlerden çıkar; bu yüzden sonuçlar tarafsız bir model başarısı ölçümü değildir.
+
+### Simülasyon: 5 dakikalık işlem fiyatı
+
+`1110s2026m02` migration sonrasında yeni sanal alış ve satış kararları sonraki
+**5m kapanışında** fiyatlanır. Güncel sanal değer de son kapanmış 5m mumunu kullanır.
+Eski bekleyen kararlar 15m zamanlarını korur; kapanmış sonuçlar değişmez.
+Formasyon ve gösterge vadeleri 15m / 4h / 1d olarak kalır.
+
+Railway'de aynı depodan ayrı bir Cron servisi oluştur:
+- Start Command: `python -m app.workers.simulation_worker`
+- Cron: `*/5 * * * *` (UTC)
+- Aynı PostgreSQL `DATABASE_URL`; healthcheck kapalı, restart policy `Never`.
+- Önce `python -m alembic upgrade 1110s2026m02` çalıştır.
+
+Mevcut piyasa worker'ının 15m programı korunur. Yeni worker yalnızca açık veya
+bekleyen simülasyon coinlerini toplar; çalışmazsa yeni işlemler veri bekler.
+Her çalıştırma en fazla 100 coin ve yaklaşık 90 saniyelik iş bütçesi kullanır;
+istek zaman aşımı nedeniyle son istek bu bütçeyi aşabilir. Tam dakikada tamamlanma
+garantisi yoktur. Sonradan okunan kayıtlar saklanan kapanış fiyatıyla sonuçlanır;
+eksik hedef mum sonraki bir fiyatla doldurulmaz. İlk toplama en fazla 1000 geçmiş
+5m mum getirir; daha eski eksik hedefler beklemede kalır.

@@ -1,4 +1,4 @@
-from sqlalchemy import JSON, BigInteger, Column, ForeignKey, Index, String
+from sqlalchemy import JSON, BigInteger, Column, Float, ForeignKey, Index, String
 
 from app.db.base import Base
 
@@ -12,6 +12,8 @@ class Simulation(Base):
     state = Column(String(20), nullable=False)
     source = Column(String(24), nullable=False)
     mode = Column(String(24), nullable=False)
+    entry_interval = Column(String(3), nullable=False, default="15m", server_default="15m")
+    exit_interval = Column(String(3), nullable=False, default="15m", server_default="15m")
     entry_ms = Column(BigInteger, nullable=False)
     exit_ms = Column(BigInteger(), nullable=True)
     entry_price = Column(String(128), nullable=True)
@@ -24,3 +26,14 @@ class Simulation(Base):
     exit_context = Column(JSON, nullable=True)
     observations = Column(JSON, nullable=False)
     __table_args__ = (Index("ix_simulation_owner_time", "account_id", "created_ms", "id"),)
+
+
+class SimulationCandle(Base):
+    __tablename__ = "simulation_candles_5m"
+    symbol = Column(String(64), primary_key=True)
+    open_time = Column(BigInteger, primary_key=True)
+    open = Column(Float, nullable=False)
+    high = Column(Float, nullable=False)
+    low = Column(Float, nullable=False)
+    close = Column(Float, nullable=False)
+    volume = Column(Float, nullable=False)

@@ -9,17 +9,18 @@ from sqlalchemy import func, select
 from app.db.models.account import Account
 from app.db.models.binance_spot import BinanceSpotCandle, BinanceSpotSymbol
 from app.db.models.candidate_scan import CandidateScan
-from app.db.models.simulation import Simulation
+from app.db.models.simulation import Simulation, SimulationCandle
 from app.services.formations import timestamp as candle_timestamp
 from app.services.indicator_direction import VERSION, evaluate
 from app.services.money_flow_context import report
 from app.services.purchase_analysis import BAR, number, valid_candle
 
-VERSION_SIM = "paper_100_usdt_v1"
+VERSION_SIM = "paper_100_usdt_5m_v2"
 BUDGET = Decimal("100")
 FEE = Decimal("0.001")
 SLIP = Decimal("0.0005")
 LIMIT = 200
+EXECUTION_BAR = 300_000
 
 
 def timestamp(ms):
@@ -53,14 +54,13 @@ def context(db, symbol, stamp):
     )
 
 
-def price_at(db, symbol, close_ms):
-    candle = db.scalar(
-        select(BinanceSpotCandle).where(
-            BinanceSpotCandle.symbol == symbol,
-            BinanceSpotCandle.interval == "15m",
-            BinanceSpotCandle.open_time == close_ms - BAR,
-        )
-    )
+def price_at(db, symbol, close_ms, interval="5m"):
+    model = SimulationCandle if interval == "5m" else BinanceSpotCandle
+    bar = EXECUTION_BAR if interval == "5m" else BAR
+    query = select(model).where(model.symbol == symbol, model.open_time == close_ms - bar)
+    if interval != "5m":
+        query = query.where(model.interval == "15m")
+    candle = db.scalar(query)
     return number(candle.close) if candle is not None and valid_candle(candle) else None
 
 
@@ -86,12 +86,12 @@ def fill_entry(row, price):
 
 def settle(db, row, stamp):
     if row.state == "pending_entry" and row.entry_ms <= stamp:
-        price = price_at(db, row.symbol, row.entry_ms)
+        price = price_at(db, row.symbol, row.entry_ms, row.entry_interval)
         if price is not None:
             fill_entry(row, price)
             row.entry_context = context(db, row.symbol, row.entry_ms)
     if row.state == "pending_exit" and row.exit_ms <= stamp:
-        price = price_at(db, row.symbol, row.exit_ms)
+        price = price_at(db, row.symbol, row.exit_ms, row.exit_interval)
         if price is not None:
             row.exit_price = format(price * (1 - SLIP), "f")
             row.exit_context = context(db, row.symbol, row.exit_ms)
@@ -174,7 +174,7 @@ def create(db, account_id, data, stamp):
     else:
         if data.price is not None or data.purchased_at is not None:
             fail("Sanal alış fiyatı veya geçmiş işlem zamanı elle atanamaz.")
-        entry_ms = (stamp // BAR + 1) * BAR
+        entry_ms = (stamp // EXECUTION_BAR + 1) * EXECUTION_BAR
     row = Simulation(
         id=str(data.id),
         account_id=account_id,
@@ -184,6 +184,8 @@ def create(db, account_id, data, stamp):
         mode=data.mode,
         source=data.source,
         entry_ms=entry_ms,
+        entry_interval="5m",
+        exit_interval="5m",
         request=request,
         selection=selection,
         observations=[],
@@ -222,7 +224,8 @@ def sell(db, row, stamp, data):
         )
         row.state = "closed"
     else:
-        row.exit_ms = (stamp // BAR + 1) * BAR
+        row.exit_interval = "5m"
+        row.exit_ms = (stamp // EXECUTION_BAR + 1) * EXECUTION_BAR
         row.state = "pending_exit"
     return row
 
@@ -230,7 +233,7 @@ def sell(db, row, stamp, data):
 def out(db, row, stamp, detail=False):
     with localcontext() as ctx:
         ctx.prec = 80
-        mark_time = stamp // BAR * BAR
+        mark_time = stamp // EXECUTION_BAR * EXECUTION_BAR
         mark = (
             price_at(db, row.symbol, mark_time) if row.quantity and row.state != "closed" else None
         )
@@ -255,6 +258,9 @@ def out(db, row, stamp, detail=False):
             entry_at=timestamp(row.entry_ms),
             exit_at=timestamp(row.exit_ms),
             budget="100",
+            entry_interval=row.entry_interval,
+            exit_interval=row.exit_interval,
+            price_interval="5m",
             entry_price=row.entry_price,
             exit_price=row.exit_price,
             quantity=row.quantity,
@@ -373,6 +379,6 @@ def listing(db, account_id, stamp, offset, kind="all"):
         note="100 USDT alış bütçesi komisyon dahildir. Her yönde %0,10 komisyon; "
         "sanal kapanış fiyatında alış +%0,05, satış -%0,05 kayma varsayılır. "
         "Gerçek referans fiyatında kayma yoktur; komisyon yine varsayımsaldır. "
-        "Yeni kararın sonraki 15m kapanışı beklenir; eksik mum başka fiyatla doldurulmaz. "
+        "Yeni kararın sonraki 5m kapanışı beklenir; eksik mum başka fiyatla doldurulmaz. "
         "Silinen işlemler istatistiklerden çıkar. Emir gönderilmez.",
     )

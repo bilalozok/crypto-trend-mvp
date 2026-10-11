@@ -7,8 +7,8 @@ from test_private_purchases import STAMP, auth
 from test_private_purchases import private_client as setup
 
 from app.db.models.account import Account
-from app.db.models.binance_spot import BinanceSpotCandle
 from app.db.models.candidate_scan import CandidateScan
+from app.db.models.simulation import Simulation, SimulationCandle
 from app.db.session import SessionLocal
 from app.services import simulation
 
@@ -25,10 +25,9 @@ def order(**kwargs):
 def candle(close_ms, price=10):
     with SessionLocal() as db:
         db.add(
-            BinanceSpotCandle(
+            SimulationCandle(
                 symbol="BTCUSDT",
-                interval="15m",
-                open_time=close_ms - 900000,
+                open_time=close_ms - 300000,
                 open=price,
                 high=price + 1,
                 low=price - 1,
@@ -60,10 +59,10 @@ def test_prospective_execution_fees_missing_bar_and_immutable_exit(private_clien
     path = "/account/simulations/" + row["id"]
     assert private_client.post(path + "/sell", headers=h, json={}).status_code == 409
     # A later valid bar never substitutes for the exact intended entry bar.
-    candle(STAMP + 1800000, 20)
-    monkeypatch.setattr("app.api.account.now_ms", lambda: STAMP + 1800000)
+    candle(STAMP + 600000, 20)
+    monkeypatch.setattr("app.api.account.now_ms", lambda: STAMP + 600000)
     assert private_client.get(path).json()["state"] == "pending_entry"
-    candle(STAMP + 900000, 11)
+    candle(STAMP + 300000, 11)
     row = private_client.get(path).json()
     assert row["state"] == "open"
     assert Decimal(row["entry_price"]) == Decimal("11") * Decimal("1.0005")
@@ -72,8 +71,8 @@ def test_prospective_execution_fees_missing_bar_and_immutable_exit(private_clien
     assert abs(Decimal(row["profit"]) - expected) < Decimal("1e-8")
     sale = private_client.post(path + "/sell", headers=h, json={"note": "düşüş kontrolü"}).json()
     assert sale["state"] == "pending_exit"
-    candle(STAMP + 2700000, 12)
-    monkeypatch.setattr("app.api.account.now_ms", lambda: STAMP + 2700000)
+    candle(STAMP + 900000, 12)
+    monkeypatch.setattr("app.api.account.now_ms", lambda: STAMP + 900000)
     closed = private_client.get(path).json()
     assert closed["state"] == "closed"
     assert closed["sale_context"]["note"] == "düşüş kontrolü"
@@ -174,8 +173,8 @@ def test_filter_revalidated_and_observations_do_not_duplicate(private_client, mo
     )
     monkeypatch.setattr(simulation, "context", lambda *a: mock)
     row = private_client.post("/account/simulations", headers=h, json=data).json()
-    candle(STAMP + 900000, 10)
-    monkeypatch.setattr("app.api.account.now_ms", lambda: STAMP + 900000)
+    candle(STAMP + 300000, 10)
+    monkeypatch.setattr("app.api.account.now_ms", lambda: STAMP + 300000)
     path = "/account/simulations/" + row["id"]
     for _ in range(2):
         detail = private_client.get(path).json()
@@ -260,3 +259,35 @@ def test_formation_scan_filter_provenance(private_client):
     filters = detail["selection"]["displayed_scan_filters"]
     assert filters["pattern"] == "double_bottom" and filters["fresh"] is True
     assert filters["min_quote_volume"] == "100000"
+
+
+def test_legacy_pending_entry_keeps_15m_but_new_sale_uses_5m(private_client, monkeypatch):
+    from app.db.models.binance_spot import BinanceSpotCandle
+
+    h = auth(private_client)
+    row = private_client.post("/account/simulations", headers=h, json=order()).json()
+    with SessionLocal() as db:
+        legacy = db.get(Simulation, row["id"])
+        legacy.entry_interval = "15m"
+        legacy.entry_ms = STAMP + 900000
+        db.add(
+            BinanceSpotCandle(
+                symbol="BTCUSDT",
+                interval="15m",
+                open_time=STAMP,
+                open=10,
+                high=11,
+                low=9,
+                close=10,
+                volume=10,
+            )
+        )
+        db.commit()
+    monkeypatch.setattr("app.api.account.now_ms", lambda: STAMP + 900000)
+    path = "/account/simulations/" + row["id"]
+    legacy = private_client.get(path).json()
+    assert legacy["state"] == "open" and legacy["entry_interval"] == "15m"
+    assert legacy["current_price"] is None  # Never substitute 15m for missing 5m marks.
+    sale = private_client.post(path + "/sell", headers=h, json={}).json()
+    assert sale["exit_interval"] == "5m"
+    assert sale["exit_at"] == simulation.timestamp(STAMP + 1200000)
