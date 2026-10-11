@@ -961,6 +961,14 @@ def list_simulations(
     return result
 
 
+@router.get("/simulation-basket-chart")
+def simulation_basket_chart(request: Request, db: Db):
+    from app.services import simulation
+
+    account = current(db, request)
+    return simulation.basket_chart(db, account.id, now_ms())
+
+
 @router.get("/simulations/{position_id}")
 def simulation_detail(position_id: UUID, request: Request, db: Db):
     from app.services import simulation

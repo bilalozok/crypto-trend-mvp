@@ -440,3 +440,70 @@ def test_basket_missing_prices_never_show_partial_total(private_client):
     assert basket["total_profit"] is None and basket["total_return_pct"] is None
     assert basket["active_net_value"] is None
     assert basket["profitable_coins"] == basket["losing_coins"] == basket["flat_coins"] == 0
+
+
+def test_source_summary_distinguishes_open_profit_from_no_closed_trades(private_client):
+    h = auth(private_client)
+    private_client.post(
+        "/account/simulations",
+        headers=h,
+        json=order(mode="actual_reference", price="10", purchased_at="2026-10-05T18:00:00Z"),
+    )
+    candle(STAMP, 11)
+    group = private_client.get("/account/simulations").json()["source_groups"][0]
+    assert group["open"] == 1 and group["closed"] == 0
+    assert group["profit"] == "0.00000000" and group["win_rate_pct"] is None
+    assert Decimal(group["unrealized_profit"]) > 0
+    assert group["total_profit"] == group["unrealized_profit"]
+    assert group["total_return_pct"] == group["total_profit"]
+
+
+def test_basket_chart_is_private_and_includes_closed_price_growth(private_client, monkeypatch):
+    assert private_client.get("/account/simulation-basket-chart").status_code == 401
+    h = auth(private_client)
+    row = private_client.post(
+        "/account/simulations",
+        headers=h,
+        json=order(mode="actual_reference", price="10", purchased_at="2026-10-05T18:00:00Z"),
+    ).json()
+    private_client.post(
+        "/account/simulations/" + row["id"] + "/sell",
+        headers=h,
+        json=dict(price="11", sold_at="2026-10-05T18:30:00Z"),
+    )
+    candle(STAMP, 12)
+    result = private_client.get("/account/simulation-basket-chart").json()
+    assert len(result["series"]) == 1
+    series = result["series"][0]
+    assert series["closed"] == 1 and series["symbol"] == "BTCUSDT"
+    assert Decimal(series["points"][-1]["change_pct"]) == Decimal("20")
+    assert len(series["points"]) <= 402
+    before = private_client.get("/account/simulations/" + row["id"]).json()["profit"]
+    candle(STAMP + 300000, 15)
+    monkeypatch.setattr("app.api.account.now_ms", lambda: STAMP + 300000)
+    after = private_client.get("/account/simulation-basket-chart").json()
+    assert Decimal(after["series"][0]["points"][-1]["change_pct"]) == Decimal("50")
+    assert private_client.get("/account/simulations/" + row["id"]).json()["profit"] == before
+    auth(private_client, "bob")
+    assert private_client.get("/account/simulation-basket-chart").json()["series"] == []
+    h = auth(private_client)
+    private_client.delete("/account/simulations/" + row["id"], headers=h)
+    assert private_client.get("/account/simulation-basket-chart").json()["series"] == []
+
+
+def test_basket_chart_weights_multiple_purchases_and_omits_pending(private_client):
+    h = auth(private_client)
+    for price in ("10", "20"):
+        private_client.post(
+            "/account/simulations",
+            headers=h,
+            json=order(mode="actual_reference", price=price, purchased_at="2026-10-05T18:00:00Z"),
+        )
+    private_client.post("/account/simulations", headers=h, json=order())
+    candle(STAMP, 15)
+    result = private_client.get("/account/simulation-basket-chart").json()
+    assert len(result["series"]) == 1 and result["pending"] == 1
+    point = result["series"][0]["points"][-1]
+    assert point["entries"] == 2
+    assert abs(Decimal(point["reference_price"]) - Decimal(40) / 3) < Decimal("1e-8")
+    assert Decimal(point["change_pct"]) == Decimal("12.5")

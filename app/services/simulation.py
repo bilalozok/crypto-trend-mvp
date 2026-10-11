@@ -1,6 +1,8 @@
 """Prospective paper execution: exact closed bars, no exchange orders or downloads."""
 
+from datetime import datetime
 from decimal import Decimal, localcontext
+from types import SimpleNamespace
 
 from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
@@ -313,12 +315,14 @@ def out(db, row, stamp, detail=False):
     return result
 
 
-def price_history(db, row, stamp):
+def price_history(db, row, stamp, sample_step=None):
     """Bounded chart points covering the whole retained post-entry price history."""
     end = stamp // EXECUTION_BAR * EXECUTION_BAR
     start = row.entry_ms
     span = max(EXECUTION_BAR, end - start)
     step = max(1, (span + EXECUTION_BAR * 1000 - 1) // (EXECUTION_BAR * 1000)) * EXECUTION_BAR
+    if sample_step is not None:
+        step = sample_step
     bucket = cast(SimulationCandle.open_time / step, BigInteger)
     grouped = (
         select(
@@ -483,11 +487,32 @@ def listing(db, account_id, stamp, offset, kind="all"):
     for source, mode in sorted({(r["source"], r["mode"]) for r in totals}):
         subset = [r for r in closed if r["source"] == source and r["mode"] == mode]
         profit = sum((Decimal(r["profit"]) for r in subset), Decimal(0))
+        active = [r for r in open_rows if r["source"] == source and r["mode"] == mode]
+        active_ready = all(r["profit"] is not None for r in active)
+        active_profit = (
+            sum((Decimal(r["profit"]) for r in active), Decimal(0)) if active_ready else None
+        )
+        filled_budget = BUDGET * (len(subset) + len(active))
+        combined = profit + active_profit if active_ready else None
+        pending = sum(
+            r["source"] == source and r["mode"] == mode and r["state"] == "pending_entry"
+            for r in totals
+        )
         source_groups.append(
             dict(
                 source=source,
                 mode=mode,
                 closed=len(subset),
+                open=len(active),
+                pending=pending,
+                purchase_budget=format(filled_budget, ".8f"),
+                unrealized_profit=format(active_profit, ".8f") if active_ready else None,
+                total_profit=format(combined, ".8f") if active_ready else None,
+                total_return_pct=(
+                    format(combined / filled_budget * 100, ".8f")
+                    if active_ready and filled_budget
+                    else None
+                ),
                 profit=format(profit, ".8f"),
                 win_rate_pct=(
                     format(
@@ -540,4 +565,69 @@ def listing(db, account_id, stamp, offset, kind="all"):
         "Gerçek referans fiyatında kayma yoktur; komisyon yine varsayımsaldır. "
         "Yeni kararın sonraki 5m kapanışı beklenir; eksik mum başka fiyatla doldurulmaz. "
         "Silinen işlemler istatistiklerden çıkar. Emir gönderilmez.",
+    )
+
+
+def basket_chart(db, account_id, stamp):
+    """All retained coins, weighted purchase reference; no simulated trade mutation."""
+    rows = db.scalars(
+        select(Simulation)
+        .where(Simulation.account_id == account_id)
+        .order_by(Simulation.created_ms)
+    ).all()
+    filled = [r for r in rows if r.quantity and r.entry_price]
+    by_coin = {}
+    for row in filled:
+        by_coin.setdefault(row.symbol, []).append(row)
+    earliest = min((r.entry_ms for r in filled), default=stamp)
+    span = max(EXECUTION_BAR, stamp - earliest)
+    step = max(1, (span + EXECUTION_BAR * 400 - 1) // (EXECUTION_BAR * 400)) * EXECUTION_BAR
+    series = []
+    for symbol, positions in sorted(by_coin.items()):
+        start = min(r.entry_ms for r in positions)
+        reference = SimpleNamespace(
+            symbol=symbol, entry_ms=start, entry_price=None, exit_ms=None, state="open"
+        )
+        history = price_history(db, reference, stamp, sample_step=step)
+        points = []
+        for point in history["points"]:
+            at = int(datetime.fromisoformat(point["at"]).timestamp() * 1000)
+            entered = [r for r in positions if r.entry_ms <= at]
+            if not entered:
+                continue
+            with localcontext() as ctx:
+                ctx.prec = 80
+                quantity = sum((Decimal(r.quantity) for r in entered), Decimal(0))
+                cost = sum(
+                    (Decimal(r.quantity) * Decimal(r.entry_price) for r in entered), Decimal(0)
+                )
+                price = Decimal(point["price"])
+                reference_price = cost / quantity
+                change = (price / reference_price - 1) * 100
+                points.append(
+                    dict(
+                        point,
+                        change_pct=format(change, ".8f"),
+                        reference_price=format(reference_price, ".8f"),
+                        entries=len(entered),
+                    )
+                )
+        series.append(
+            dict(
+                symbol=symbol,
+                points=points,
+                positions=len(positions),
+                closed=sum(r.state == "closed" for r in positions),
+            )
+        )
+    return dict(
+        as_of=timestamp(stamp),
+        sample_minutes=step // 60000,
+        series=series,
+        pending=sum(r.state == "pending_entry" for r in rows),
+        note="Tüm kayıtlı coinlerin alış referansına göre piyasa fiyatı değişimi (%). "
+        "Aynı coinde adet ağırlıklı alış fiyatı kullanılır; yeni alış referansı değiştirir. "
+        "Komisyon hariçtir; satış sonrası devamı elde tutulmuş olsaydı fiyat gelişimidir, "
+        "gerçekleşen kazanç değildir. Eksik geçmiş uydurulmaz. "
+        "Grafik tablo filtresinden bağımsızdır.",
     )

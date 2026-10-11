@@ -63,7 +63,7 @@ function add(tag,attrs,parent=el("chart")){const n=document.createElementNS(NS,t
 function text(value,x,y,color="#526172"){const n=add("text",{x,y,fill:color,"font-size":12});n.textContent=value;return n}
 function detail(label,value){const box=document.createElement("div"),dt=document.createElement("dt"),dd=document.createElement("dd");dt.textContent=label;dd.textContent=value;box.append(dt,dd);el("details").append(box)}
 function draw(){
- const svg=el("chart");svg.replaceChildren();el("details").replaceChildren();el("tooltip").textContent="Mum ayrıntıları için grafiğin üzerine gel.";
+ const svg=el("chart");svg.replaceChildren();el("details").replaceChildren();el("tooltip").textContent="Mum ayrıntıları için grafiğe tıkla veya dokun.";
  const p=data?.patterns[Number(el("pattern").value)],rows=data?.candles||[];
  el("reason").textContent=p?.reason||"Veri hazır olduğunda formasyonlar değerlendirilir.";
  if(!rows.length){text("Gösterilecek geçerli mum verisi yok.",30,80);return}
@@ -97,7 +97,7 @@ function draw(){
   detail("Hacim oranı",p.volume_ratio==null?"—":format(p.volume_ratio)+"×");detail("Son kapanış",format(p.last_close));if(p.flag_retracement_ratio!=null)detail("Bayrak geri çekilmesi",format(p.flag_retracement_ratio*100)+"%");
   detail("Eşiği koruyor",p.breakout_holding==null?"—":p.breakout_holding?"Evet":"Hayır");
  }
- svg.onpointermove=event=>{const bounds=svg.getBoundingClientRect(),px=(event.clientX-bounds.left)*1100/bounds.width;const i=Math.max(0,Math.min(rows.length-1,Math.floor((px-left)/step)));const r=rows[i];el("tooltip").textContent=time(r.open_time)+" TR · O "+format(r.open)+" · H "+format(r.high)+" · L "+format(r.low)+" · C "+format(r.close)+" · V "+format(r.volume)};
+ svg.onclick=event=>{const bounds=svg.getBoundingClientRect(),px=(event.clientX-bounds.left)*1100/bounds.width;const i=Math.max(0,Math.min(rows.length-1,Math.floor((px-left)/step)));const r=rows[i];el("tooltip").textContent=time(r.open_time)+" TR · O "+format(r.open)+" · H "+format(r.high)+" · L "+format(r.low)+" · C "+format(r.close)+" · V "+format(r.volume)};
 }
 async function load(){
  const token=++sequence,symbol=el("symbol").value.trim().toUpperCase();

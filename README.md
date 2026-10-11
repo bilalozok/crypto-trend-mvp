@@ -1286,3 +1286,13 @@ Coin sayaçları açık işlemlerdeki farklı coinleri sayar; kârda/zararda ayr
 coindeki tüm açık işlemlerin net sonucuna göredir. Fiyat eksikse genel toplam
 fark/getiri verilmez. Sayaçlar tablo filtresi ve sayfalamasından bağımsızdır.
 En büyük coin payı aktif alış maliyetinden hesaplanır.
+
+Simülasyon kaynak özeti açık ve kapanan sonuçları ayrı gösterir. Kazanç oranı yalnızca
+kapanan işlemlerden hesaplanır; hiç satış yoksa "Henüz satış yok" görünür. İşlemlerim
+grafiği tüm kayıtlı coinlerin fiyatlarını adet ağırlıklı alış referansına göre yüzde
+değişimle karşılaştırır. Komisyon hariçtir; satış sonrası fiyat eğrisi gerçekleşen
+kazanç değildir. Coinler seçim listesiyle gizlenebilir. Grafik tablo filtresi ve
+sayfalamasından bağımsız, kişiye özeldir. Saklanan fiyatlar en fazla yaklaşık 400
+zaman aralığıyla çizilir; veri boşlukları uydurulmaz. Gösterge, simülasyon ve alış
+fiyat grafikleri tıklama/dokunma ve klavye ile nokta verisi gösterir. Mum grafiği
+tıklamayla seçilen mumun OHLC/hacim verisini gösterir. Migration gerekli değildir.
