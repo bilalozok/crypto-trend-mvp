@@ -1225,3 +1225,18 @@ CMF21 ve MFI14 kapanmış mumlardan hesaplanır. Aday sıralamasında Ichimoku e
 Her ana görünümde Yardım düğmesi içerik, kullanım ve yorumlama sınırlarını açıklayan erişilebilir pencereyi açar. Adaylardaki Yön uyumu incelemesi güncel üç vadeyi arşivden ayrı değerlendirir. Gösterge filtresi piyasa genelinde yükseliş ve yalnızca kullanıcının alış kayıtlarında düşüş koşullarını seçilen vadede, 100 coinlik sayfalarla okur. Tüm eşleşme filtreleri yardımda açıklanır; Fibonacci %61,8 filtresi deneysel olup bağımsız teyit değildir. Satışlar düşülmez. Eksik/eski veri eşleşme sayılmaz. Yeni Binance çağrısı veya migration yoktur.
 
 Yeni alış kayıtları ve tüm maliyet/değer analizleri yalnızca USDT kullanır. Eski TRY kayıtları saklanır, otomatik çevrilmez ve USDT hesaplarına dahil edilmez. Değerleme döviz kuru servisi çağırmaz. Migration gerekli değildir.
+
+
+### Özel Simülasyon · 100 USDT
+
+Migration `1110s2026m01` gerekir (`0910e2026l01` üzerine). Yeni `private_simulations` tablosu gerçek alışları değiştirmez. Her kayıt oturum sahibine aittir; yazma/silme CSRF gerektirir. Yönetici kullanıcı silerse o kullanıcının sanal kayıtları da temizlenir.
+
+Kayıtlı aday, piyasa aday taraması ve yükseliş gösterge filtresinde **Sanal al · 100 USDT** ile seçim yapılır. Kayıtlı tarama kriterleri/sürümü bağımsız kopyalanır; taramanın silinmesi bunları bozmaz. Gösterge filtresindeki vade ve tam yükseliş eşleşmesi sunucuda yeniden doğrulanır. Eski bir taramadan seçim yapılabilir; tarama zamanı ve güncel karar bağlamı ayrı tutulur. Piyasa aday düğmesi güncel seçim bağlamını saklar, kayıtsız taramaya arşiv kimliği atamaz.
+
+Sanal alış, karar anından **sonraki** 15m kapanışında gerçekleşir. Aynı şekilde Sat sonraki kapanışa satış kararı koyar. Tam o mum eksik/geçersizse işlem bekler; daha sonraki fiyat yerine kullanılmaz. Güncel açık değer de son beklenen tam kapanıştan hesaplanır; eski fiyat güncel sayılmaz. Yenile/inceleme mevcut veritabanını okur ve bekleyen işlemleri tamamlar; yeni Binance indirmesi, worker işi veya otomatik satış eklenmez. Çok uzun gecikmede gerekli mum artık saklanmıyorsa kayıt bekleyen durumda kalabilir ve silinebilir.
+
+100 USDT bütçe alış komisyonu dahil; her yönde %0,10 komisyon, sanal alışta +%0,05/satışta -%0,05 fiyat kayması varsayılır. Miktar = 100 / (alış fiyatı × 1,001). Net satış = miktar × satış fiyatı × 0,999; net fark = net satış − 100. Gösterilen yüzdeler 100 USDT maliyetine göredir. Komisyon/kayma varsayımları işlem defterinde açıkça gösterilir; borsa gerçekleşmesi değildir.
+
+Elle gerçek alış referansı fiyat/zaman ile eklenebilir, miktar yine 100 USDT karşılığı normalize edilir. Gerçek deftere aktarılmaz; elle girilen fiyat kaymasız, komisyon %0,10 varsayımlıdır. Gerçek referansta satış fiyat/zamanı da elle girilebilir. Sonradan girilen gerçek referans önceden verilmiş tahmin sayılmaz.
+
+Alış seçimi, alış kapanışı, satış kararı ve satış kapanışı bağlamları ayrı saklanır. İncele ekranında üç vade formasyon/gösterge koşulları ve ham değerler açılabilir. Açık işlem yenilemeleri aynı 15m kapanışta tek gözlem oluşturur; son 192 inceleme anı tutulur. Grafik kesintisiz fiyat geçmişi değildir. En fazla 200 kayıt, sayfada 20 işlem. Kazanç oranı yalnızca kapanmış işlemlerde pozitif net sonuç oranıdır; sıfır kazanan sayılmaz. Açık sonuçlar tahminidir ve gerçekleşenlerden ayrılır. Silinen işlemler bütün özetlerden çıkar; bu yüzden sonuçlar tarafsız bir model başarısı ölçümü değildir.

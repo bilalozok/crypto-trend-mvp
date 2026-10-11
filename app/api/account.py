@@ -11,6 +11,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.db.models.account import Account, AccountSession, Purchase
 from app.db.models.binance_spot import BinanceSpotSymbol
+from app.db.models.simulation import Simulation
 from app.db.session import SessionLocal
 from app.services import account_auth, portfolio_technical, purchase_analysis
 from app.services.binance_collection import now_ms
@@ -832,7 +833,14 @@ def delete_account(username: str, data: DeleteAccountInput, request: Request, db
     scans = select(CandidateScan.id).where(CandidateScan.account_id == target.id)
     for model in (CandidateObservation, CandidateOutcome):
         db.execute(delete(model).where(model.scan_id.in_(scans)))
-    for model in (CandidateScan, PortfolioObservation, PortfolioSnapshot, Purchase, AccountSession):
+    for model in (
+        CandidateScan,
+        PortfolioObservation,
+        PortfolioSnapshot,
+        Simulation,
+        Purchase,
+        AccountSession,
+    ):
         db.execute(delete(model).where(model.account_id == target.id))
     db.delete(target)
     db.commit()
@@ -875,3 +883,116 @@ def indicator_screen(
             )
         stamp = as_of
     return screen(db, account.id, scope, interval, stamp, offset)
+
+
+class SimulationScanFilters(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    pattern: str = Field(min_length=1, max_length=64, pattern=r"^[a-z_]+$")
+    state: Literal["all", "forming", "confirmed", "invalidated"]
+    direction: Literal["all", "up", "down"]
+    min_quote_volume: Decimal = Field(ge=0, le=Decimal("1e18"))
+    fresh: bool = False
+    volume_supported: bool = False
+
+
+class SimulationInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    id: UUID
+    symbol: str = Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9]+$")
+    source: Literal[
+        "manual", "candidate_scan", "market_scan", "formation_scan", "indicator_filter"
+    ] = "manual"
+    scan_id: UUID | None = None
+    scan_filters: SimulationScanFilters | None = None
+    interval: Literal["15m", "4h", "1d"] = "15m"
+    mode: Literal["paper", "actual_reference"] = "paper"
+    price: Decimal | None = Field(
+        default=None, gt=0, le=Decimal("1e12"), max_digits=38, decimal_places=18
+    )
+    purchased_at: datetime | None = None
+    note: str = Field(default="", max_length=1000)
+
+    @field_validator("purchased_at")
+    @classmethod
+    def aware(cls, value):
+        if value is not None and (value.tzinfo is None or value.utcoffset() is None):
+            raise ValueError("Saat dilimi gerekli.")
+        return value
+
+
+class SimulationSaleInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    note: str = Field(default="", max_length=1000)
+    price: Decimal | None = Field(
+        default=None, gt=0, le=Decimal("1e12"), max_digits=38, decimal_places=18
+    )
+    sold_at: datetime | None = None
+
+    @field_validator("sold_at")
+    @classmethod
+    def aware(cls, value):
+        return SimulationInput.aware(value)
+
+
+@router.post("/simulations", status_code=201)
+def create_simulation(data: SimulationInput, request: Request, db: Db):
+    from app.services import simulation
+
+    account = current(db, request, mutate=True)
+    stamp = now_ms()
+    row = simulation.create(db, account.id, data, stamp)
+    result = simulation.out(db, row, stamp)
+    db.commit()
+    return result
+
+
+@router.get("/simulations")
+def list_simulations(
+    request: Request,
+    db: Db,
+    offset: int = Query(0, ge=0, le=200),
+    kind: Literal["all", "open", "closed"] = "all",
+):
+    from app.services import simulation
+
+    account = current(db, request)
+    result = simulation.listing(db, account.id, now_ms(), offset, kind)
+    db.commit()
+    return result
+
+
+@router.get("/simulations/{position_id}")
+def simulation_detail(position_id: UUID, request: Request, db: Db):
+    from app.services import simulation
+
+    account = current(db, request)
+    stamp = now_ms()
+    row = simulation.owned(db, account.id, position_id)
+    simulation.settle(db, row, stamp)
+    result = simulation.out(db, row, stamp, detail=True)
+    db.commit()
+    return result
+
+
+@router.post("/simulations/{position_id}/sell")
+def sell_simulation(position_id: UUID, data: SimulationSaleInput, request: Request, db: Db):
+    from app.services import simulation
+
+    account = current(db, request, mutate=True)
+    stamp = now_ms()
+    row = simulation.owned(db, account.id, position_id)
+    simulation.sell(db, row, stamp, data)
+    result = simulation.out(db, row, stamp, detail=True)
+    db.commit()
+    return result
+
+
+@router.delete("/simulations/{position_id}")
+def delete_simulation(position_id: UUID, request: Request, db: Db):
+    from app.services import simulation
+
+    account = current(db, request, mutate=True)
+    row = simulation.owned(db, account.id, position_id)
+    db.delete(row)
+    db.commit()
+    return dict(deleted=True)

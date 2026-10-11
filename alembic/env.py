@@ -10,6 +10,7 @@ import app.db.models.candidate_outcome  # noqa: F401
 import app.db.models.candidate_scan  # noqa: F401
 import app.db.models.early_formation  # noqa: F401
 import app.db.models.portfolio_snapshot  # noqa: F401
+import app.db.models.simulation  # noqa: F401
 from alembic import context
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
