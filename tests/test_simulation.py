@@ -507,3 +507,160 @@ def test_basket_chart_weights_multiple_purchases_and_omits_pending(private_clien
     assert point["entries"] == 2
     assert abs(Decimal(point["reference_price"]) - Decimal(40) / 3) < Decimal("1e-8")
     assert Decimal(point["change_pct"]) == Decimal("12.5")
+
+
+def test_real_spot_amount_quantity_ledger_fees_and_mode_filters(private_client):
+    h = auth(private_client)
+    candle(STAMP, 12)
+    amount_order = order(
+        mode="actual",
+        price="10",
+        purchased_at="2026-10-05T18:00:00Z",
+        amount_usdt="250",
+        fee="1",
+        note="Spot kayıt",
+    )
+    result = private_client.post("/account/simulations", headers=h, json=amount_order)
+    assert result.status_code == 201, result.text
+    first = result.json()
+    assert Decimal(first["quantity"]) == 25
+    assert Decimal(first["budget"]) == 251
+    assert Decimal(first["net_value"]) == 300
+    assert Decimal(first["profit"]) == 49  # Real holdings: no assumed fees/slippage.
+    assert first["purchase_id"] == first["id"]
+    # Same request writes exactly one journal entry, not a duplicate purchase.
+    assert (
+        private_client.post("/account/simulations", headers=h, json=amount_order).status_code == 201
+    )
+    purchases = private_client.get("/account/purchases").json()["purchases"]
+    assert len(purchases) == 1 and Decimal(purchases[0]["quantity"]) == 25
+    assert Decimal(purchases[0]["fee"]) == 1
+    second_result = private_client.post(
+        "/account/simulations",
+        headers=h,
+        json=order(mode="actual", price="10", purchased_at="2026-10-05T18:00:00Z", quantity="5"),
+    )
+    assert second_result.status_code == 201, second_result.text
+    second = second_result.json()
+    assert Decimal(second["budget"]) == 50
+    paper = private_client.post("/account/simulations", headers=h, json=order()).json()
+    legacy = private_client.post(
+        "/account/simulations",
+        headers=h,
+        json=order(mode="actual_reference", price="10", purchased_at="2026-10-05T18:00:00Z"),
+    ).json()
+    closed_path = "/account/simulations/" + second["id"] + "/sell"
+    assert private_client.post(closed_path, headers=h, json={}).status_code == 422
+    closed = private_client.post(
+        closed_path, headers=h, json={"price": "15", "sold_at": "2026-10-05T18:30:00Z", "fee": "2"}
+    ).json()
+    assert closed["state"] == "closed"
+    assert Decimal(closed["profit"]) == 23
+    closed_repeat = private_client.post(
+        closed_path,
+        headers=h,
+        json={"price": "999", "sold_at": "2026-10-05T18:30:00Z", "fee": "99"},
+    ).json()
+    assert closed_repeat["profit"] == closed["profit"]
+    actual = private_client.get("/account/simulations?mode=actual").json()
+    assert {p["id"] for p in actual["positions"]} == {first["id"], second["id"]}
+    assert Decimal(actual["summary"]["basket"]["total_purchase_budget"]) == 301
+    assert Decimal(actual["summary"]["basket"]["active_purchase_budget"]) == 251
+    assert Decimal(actual["summary"]["realized_profit"]) == 23
+    assert (
+        private_client.get("/account/simulations?mode=actual_reference").json()["positions"][0][
+            "id"
+        ]
+        == legacy["id"]
+    )
+    assert (
+        private_client.get("/account/simulations?mode=paper").json()["positions"][0]["id"]
+        == paper["id"]
+    )
+    closed_only = private_client.get("/account/simulations?mode=actual&kind=closed").json()
+    assert [p["id"] for p in closed_only["positions"]] == [second["id"]]
+    assert all(
+        p["state"] != "closed"
+        for p in private_client.get("/account/simulations?mode=actual&kind=open").json()[
+            "positions"
+        ]
+    )
+    assert private_client.get("/account/simulations?kind=unknown").status_code == 422
+    assert private_client.get("/account/simulations?mode=unknown").status_code == 422
+    assert private_client.get("/account/simulation-basket-chart?mode=paper").json()["series"] == []
+    # Removing tracking does not erase the independently kept real purchase journal.
+    assert (
+        private_client.delete("/account/simulations/" + first["id"], headers=h).status_code == 200
+    )
+    assert len(private_client.get("/account/purchases").json()["purchases"]) == 2
+
+
+def test_real_spot_validation_precision_atomicity_and_owner(private_client):
+    h = auth(private_client)
+    base = order(mode="actual", price="3", purchased_at="2026-10-05T18:00:00Z")
+    for fields in (
+        {},
+        {"quantity": "1", "amount_usdt": "3"},
+        {"quantity": "0"},
+        {"quantity": "-1"},
+        {"amount_usdt": "1", "fee": "-1"},
+        {"quantity": "1", "purchased_at": "2027-01-01T00:00:00Z"},
+        {"quantity": "1000000000000"},
+    ):
+        response = private_client.post("/account/simulations", headers=h, json={**base, **fields})
+        assert response.status_code == 422, response.text
+    assert private_client.get("/account/purchases").json()["purchases"] == []
+    assert (
+        private_client.post(
+            "/account/simulations", headers=h, json=order(amount_usdt="100")
+        ).status_code
+        == 422
+    )
+    response = private_client.post(
+        "/account/simulations", headers=h, json={**base, "amount_usdt": "1"}
+    )
+    assert response.status_code == 201, response.text
+    record = response.json()
+    assert Decimal(record["quantity"]) == Decimal("0.333333333333333333")
+    purchase = private_client.get("/account/purchases").json()["purchases"][0]
+    assert Decimal(purchase["unit_price"]) * Decimal(purchase["quantity"]) == Decimal(
+        record["budget"]
+    )
+    auth(private_client, "bob")
+    assert private_client.get("/account/simulations?mode=actual").json()["positions"] == []
+    assert private_client.get("/account/simulation-basket-chart?mode=actual").json()["series"] == []
+    assert private_client.get("/account/simulations/" + record["id"]).status_code == 404
+
+
+def test_spot_migration_preserves_legacy_position_amounts(tmp_path, monkeypatch):
+    import importlib
+
+    from sqlalchemy import create_engine
+
+    command = importlib.import_module("alembic.command")
+    Config = importlib.import_module("alembic.config").Config
+    url = "sqlite:///" + str(tmp_path / "spot-migration.db")
+    monkeypatch.setenv("DATABASE_URL", url)
+    cfg = Config("alembic.ini")
+    command.upgrade(cfg, "1110s2026m02")
+    engine = create_engine(url)
+    with engine.begin() as connection:
+        connection.exec_driver_sql(
+            "INSERT INTO private_accounts (id,username,password_hash,active,created_ms) "
+            "VALUES ('owner','test','hash',1,0)"
+        )
+        connection.exec_driver_sql(
+            "INSERT INTO private_simulations (id,account_id,symbol,created_ms,state,source,mode,"
+            "entry_ms,entry_price,quantity,request,selection,observations) "
+            "VALUES ('old','owner','BTCUSDT',0,'open','manual','actual_reference',"
+            "0,'10','9.99000999','{}','{}','[]')"
+        )
+    command.upgrade(cfg, "1110s2026m03")
+    with engine.connect() as connection:
+        record = connection.exec_driver_sql(
+            "SELECT budget,purchase_id,entry_price,quantity,state,mode "
+            "FROM private_simulations WHERE id='old'"
+        ).one()
+        assert tuple(record) == ("100", None, "10", "9.99000999", "open", "actual_reference")
+        assert connection.exec_driver_sql("SELECT count(*) FROM private_purchases").scalar() == 0
+    engine.dispose()

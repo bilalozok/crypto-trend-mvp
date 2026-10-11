@@ -1299,3 +1299,14 @@ tıklamayla seçilen mumun OHLC/hacim verisini gösterir. Migration gerekli değ
 
 
 Simülasyon tablosu kompakt fiyat hücreleri kullanır; yüzdeler en fazla üç ondalık basamakla gösterilir. Hesaplama hassasiyeti korunur. İşlemlerim listesi açıkken her yenilemede tüm kayıtlı açık coinlerin güncel 15m formasyonları kontrol edilir. İlk görülen düşüşte ve yükselişten tekrar düşüşe geçişte coin başına bir satış inceleme bildirimi çıkar; teyitsiz oluşum ayrıca belirtilir. Bildirim otomatik satış yapmaz; tarayıcı kapalıyken bildirim gönderilmez. Oturumdan çıkınca bildirim geçmişi temizlenir.
+
+
+### Gerçek spot ve sanal işlemler
+- Alış eklerken **Sanal** (100 USDT) veya **Gerçek spot** seçilir. Gerçekte birim fiyat, Türkiye saatiyle alış zamanı ve komisyon hariç USDT tutarı **ya da** coin miktarı girilir. Komisyon ayrıca USDT olarak girilir; girilmediyse 0 kullanılır. Tutar girişinde hesaplanan adet 18 ondalığa aşağı yuvarlanır; kalan çok küçük USDT kırıntısı maliyete eklenmez.
+- Gerçek spot kayıtları aynı atomik işlemde Alışlarım defterine de eklenir. Aynı istek kimliği tekrar gönderilse de ikinci alış yaratılmaz. Gerçek seçimlerde de tarama / gösterge kaynağı saklanır. Emir gönderilmez.
+- Gerçek kayıtta satış gerçekleşen fiyat, zaman ve komisyonla elle kaydedilir. Açık pozisyon değeri son kapanmış 5m fiyatı × girilen adettir, gelecekteki satış masrafı varsayılmaz. Kapanan net fark = satış tutarı − satış komisyonu − alış maliyeti (alış komisyonu dahil). Sanal işlem ücret / kayma varsayımları değişmez.
+- Kayıt türü filtresi işlem listesi, sepet özeti ve sepet grafiğine uygulanır. Durum filtresi yalnızca listeyi seçer; Satılmış sadece kapanan işlemleri içerir. Eski gerçek referanslar gerçek adet bilinmediği için 100 USDT normalizasyonunu korur ve Eski referans olarak gösterilir; geçmiş alışlar otomatik çoğaltılmaz.
+- İşlemlerim'den silmek bağlı gerçek Alışlarım kaydını silmez. Alışlarım alış defteridir; satışlar oradaki tarihsel alış kaydını azaltmaz. Güncel açık / satılmış spot durumu İşlemlerim'de takip edilir. Önceden yalnız Alışlarım'a girilmiş kayıtlar otomatik taşınmaz; aynı alışı tekrar girmemeye dikkat et.
+- Grafik değerleri grafiğin üstünde görünür; son nokta başlangıçta seçilir. Tıklama / dokunma koordinatları SVG'nin gerçek ölçeğinden hesaplanır.
+
+Migration: `1110s2026m03` (budget ve purchase_id alanları). Deploy öncesinde `python -m alembic upgrade 1110s2026m03` uygulanır. Eski kayıtların bütçesi 100 USDT kalır.

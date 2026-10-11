@@ -1,14 +1,14 @@
 """Prospective paper execution: exact closed bars, no exchange orders or downloads."""
 
 from datetime import datetime
-from decimal import Decimal, localcontext
+from decimal import ROUND_DOWN, Decimal, localcontext
 from types import SimpleNamespace
 
 from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy import BigInteger, cast, func, select
 
-from app.db.models.account import Account
+from app.db.models.account import Account, Purchase
 from app.db.models.binance_spot import BinanceSpotCandle, BinanceSpotSymbol
 from app.db.models.candidate_scan import CandidateScan
 from app.db.models.simulation import Simulation, SimulationCandle
@@ -77,12 +77,20 @@ def owned(db, account_id, position_id):
     return row
 
 
+def cost(row):
+    return Decimal(row.budget or "100")
+
+
+def mode_matches(row, mode):
+    return mode == "all" or row.mode == mode
+
+
 def fill_entry(row, price):
     with localcontext() as ctx:
         ctx.prec = 80
         execution = price * (1 + SLIP) if row.mode == "paper" else price
         row.entry_price = format(execution, "f")
-        row.quantity = format(BUDGET / (execution * (1 + FEE)), "f")
+        row.quantity = format(cost(row) / (execution * (1 + FEE)), "f")
     row.state = "open"
 
 
@@ -167,8 +175,8 @@ def create(db, account_id, data, stamp):
         if not h or not h["up"]["all_match"]:
             fail("Seçilen vadede yükseliş filtresi artık tam eşleşmiyor; listeyi yenile.", 409)
         selection["filter"] = dict(interval=data.interval, direction="up", criteria=h["up"])
-    if data.mode == "actual_reference":
-        if data.source != "manual" or data.price is None or data.purchased_at is None:
+    if data.mode in ("actual_reference", "actual"):
+        if data.price is None or data.purchased_at is None:
             fail("Gerçek alış referansı için elle fiyat ve alış zamanı gir.")
         entry_ms = int(data.purchased_at.timestamp() * 1000)
         if entry_ms < 0 or entry_ms > stamp:
@@ -177,6 +185,29 @@ def create(db, account_id, data, stamp):
         if data.price is not None or data.purchased_at is not None:
             fail("Sanal alış fiyatı veya geçmiş işlem zamanı elle atanamaz.")
         entry_ms = (stamp // EXECUTION_BAR + 1) * EXECUTION_BAR
+    actual_quantity = None
+    budget = BUDGET
+    if data.mode == "actual":
+        if (data.amount_usdt is None) == (data.quantity is None):
+            fail("Gerçek alış için yalnızca USDT tutarı veya coin miktarını gir.")
+        with localcontext() as ctx:
+            ctx.prec = 80
+            principal = (
+                data.amount_usdt if data.amount_usdt is not None else data.quantity * data.price
+            )
+            actual_quantity = data.quantity if data.quantity is not None else principal / data.price
+            if data.quantity is None:
+                actual_quantity = actual_quantity.quantize(Decimal("1e-18"), rounding=ROUND_DOWN)
+                if actual_quantity <= 0:
+                    fail("Girilen tutar bu fiyatta en az 0,000000000000000001 coin almalı.")
+                principal = actual_quantity * data.price
+            budget = principal + (data.fee or Decimal(0))
+            if budget > Decimal("1e12") or actual_quantity > Decimal("1e12"):
+                fail("Gerçek alış tutarı veya miktarı çok büyük.")
+        if db.get(Purchase, str(data.id)) is not None:
+            fail("Alış kayıt kimliği zaten kullanılıyor.", 409)
+    elif data.amount_usdt is not None or data.quantity is not None or data.fee is not None:
+        fail("Tutar, miktar ve komisyon yalnızca gerçek spot alış için girilir.")
     row = Simulation(
         id=str(data.id),
         account_id=account_id,
@@ -191,9 +222,27 @@ def create(db, account_id, data, stamp):
         request=request,
         selection=selection,
         observations=[],
+        budget=format(budget, "f"),
     )
-    if data.mode == "actual_reference":
+    if data.mode in ("actual_reference", "actual"):
         fill_entry(row, data.price)
+        if data.mode == "actual":
+            row.quantity = format(actual_quantity, "f")
+            row.purchase_id = row.id
+            db.add(
+                Purchase(
+                    id=row.id,
+                    account_id=account_id,
+                    symbol=symbol,
+                    purchased_ms=entry_ms,
+                    currency="USDT",
+                    unit_price=format(data.price, "f"),
+                    quantity=row.quantity,
+                    fee=format(data.fee or Decimal(0), "f"),
+                    note=data.note,
+                    created_ms=stamp,
+                )
+            )
         row.entry_context = dict(
             note="Geçmiş gerçek alış referansı sonradan girildi; o andaki seçim kanıtı değildir.",
             reported_at=timestamp(stamp),
@@ -212,8 +261,18 @@ def sell(db, row, stamp, data):
     row.sale_context = dict(
         decided_at=timestamp(stamp), note=data.note, context=context(db, row.symbol, stamp)
     )
+    if row.mode == "actual" and (data.price is None or data.sold_at is None):
+        fail("Gerçek spot satış için gerçekleşen fiyat ve zamanı gir.")
+    if data.fee is not None and row.mode != "actual":
+        fail("Satış komisyonu yalnızca gerçek spot işlemde girilir.")
+    if row.mode == "actual":
+        row.sale_context = dict(row.sale_context, fee=format(data.fee or Decimal(0), "f"))
     if data.price is not None or data.sold_at is not None:
-        if row.mode != "actual_reference" or data.price is None or data.sold_at is None:
+        if (
+            row.mode not in ("actual_reference", "actual")
+            or data.price is None
+            or data.sold_at is None
+        ):
             fail("Elle satış yalnızca gerçek alış referansında fiyat ve zamanla yapılır.")
         exit_ms = int(data.sold_at.timestamp() * 1000)
         if not row.entry_ms < exit_ms <= stamp:
@@ -245,7 +304,15 @@ def out(db, row, stamp, detail=False):
             else (mark * (1 - SLIP) if mark is not None else None)
         )
         net = Decimal(row.quantity) * execution * (1 - FEE) if execution is not None else None
-        profit = net - BUDGET if net is not None else None
+        if row.mode == "actual":
+            execution = Decimal(row.exit_price) if row.state == "closed" else mark
+            sale_fee = (
+                Decimal((row.sale_context or {}).get("fee", "0"))
+                if row.state == "closed"
+                else Decimal(0)
+            )
+            net = Decimal(row.quantity) * execution - sale_fee if execution is not None else None
+        profit = net - cost(row) if net is not None else None
 
         def fmt(value):
             return format(value, ".8f") if value is not None else None
@@ -259,7 +326,8 @@ def out(db, row, stamp, detail=False):
             selected_at=timestamp(row.created_ms),
             entry_at=timestamp(row.entry_ms),
             exit_at=timestamp(row.exit_ms),
-            budget="100",
+            budget=format(cost(row), "f"),
+            purchase_id=row.purchase_id,
             entry_interval=row.entry_interval,
             exit_interval=row.exit_interval,
             price_interval="5m",
@@ -270,7 +338,7 @@ def out(db, row, stamp, detail=False):
             price_at=timestamp(mark_time) if mark is not None else None,
             net_value=fmt(net),
             profit=fmt(profit),
-            return_pct=fmt(profit / BUDGET * 100) if profit is not None else None,
+            return_pct=fmt(profit / cost(row) * 100) if profit is not None else None,
             note=row.selection.get("note", ""),
         )
     last = (row.observations or [])[-1] if row.observations else None
@@ -428,7 +496,7 @@ def latest_formation(db, symbol, stamp):
     return result
 
 
-def listing(db, account_id, stamp, offset, kind="all"):
+def listing(db, account_id, stamp, offset, kind="all", mode="all"):
     rows = db.scalars(
         select(Simulation)
         .where(Simulation.account_id == account_id)
@@ -438,14 +506,14 @@ def listing(db, account_id, stamp, offset, kind="all"):
     for row in rows:
         settle(db, row, stamp)
     ordered = sorted(rows, key=lambda r: (r.created_ms, r.id), reverse=True)
-    totals = [out(db, r, stamp) for r in ordered]
+    totals = [out(db, r, stamp) for r in ordered if mode_matches(r, mode)]
     closed = [r for r in totals if r["state"] == "closed"]
     open_rows = [r for r in totals if r["state"] in ("open", "pending_exit")]
     realized = sum((Decimal(r["profit"]) for r in closed), Decimal(0))
     ready = all(r["profit"] is not None for r in open_rows)
     unrealized = sum((Decimal(r["profit"]) for r in open_rows), Decimal(0)) if ready else None
-    invested = BUDGET * (len(open_rows) + len(closed))
-    active_cost = BUDGET * len(open_rows)
+    invested = sum((Decimal(r["budget"]) for r in open_rows + closed), Decimal(0))
+    active_cost = sum((Decimal(r["budget"]) for r in open_rows), Decimal(0))
     total_profit = realized + unrealized if ready else None
     by_coin = {}
     for item in open_rows:
@@ -475,10 +543,22 @@ def listing(db, account_id, stamp, offset, kind="all"):
         missing_price_coins=missing_coins,
         pending_sale=sum(item["state"] == "pending_exit" for item in open_rows),
         pending_budget=format(
-            BUDGET * sum(item["state"] == "pending_entry" for item in totals), ".8f"
+            sum(
+                (Decimal(item["budget"]) for item in totals if item["state"] == "pending_entry"),
+                Decimal(0),
+            ),
+            ".8f",
         ),
         largest_coin_weight_pct=(
-            format(Decimal(max(map(len, by_coin.values()))) / len(open_rows) * 100, ".2f")
+            format(
+                max(
+                    sum((Decimal(r["budget"]) for r in coin), Decimal(0))
+                    for coin in by_coin.values()
+                )
+                / active_cost
+                * 100,
+                ".2f",
+            )
             if open_rows
             else None
         ),
@@ -492,7 +572,7 @@ def listing(db, account_id, stamp, offset, kind="all"):
         active_profit = (
             sum((Decimal(r["profit"]) for r in active), Decimal(0)) if active_ready else None
         )
-        filled_budget = BUDGET * (len(subset) + len(active))
+        filled_budget = sum((Decimal(r["budget"]) for r in subset + active), Decimal(0))
         combined = profit + active_profit if active_ready else None
         pending = sum(
             r["source"] == source and r["mode"] == mode and r["state"] == "pending_entry"
@@ -525,7 +605,11 @@ def listing(db, account_id, stamp, offset, kind="all"):
             )
         )
     filtered = [
-        r for r in totals if kind == "all" or (r["state"] == "closed") == (kind == "closed")
+        r
+        for r in totals
+        if kind == "all"
+        or (kind == "closed" and r["state"] == "closed")
+        or (kind == "open" and r["state"] in ("pending_entry", "open", "pending_exit"))
     ]
     page = filtered[offset : offset + 20]
     formations = {}
@@ -537,6 +621,8 @@ def listing(db, account_id, stamp, offset, kind="all"):
     return dict(
         version=VERSION_SIM,
         as_of=timestamp(stamp),
+        mode=mode,
+        kind=kind,
         source_groups=source_groups,
         positions=page,
         total=len(filtered),
@@ -557,24 +643,31 @@ def listing(db, account_id, stamp, offset, kind="all"):
                 else None
             ),
             net_return_pct=(
-                format(realized / (BUDGET * len(closed)) * 100, ".8f") if closed else None
+                format(
+                    realized / sum((Decimal(r["budget"]) for r in closed), Decimal(0)) * 100, ".8f"
+                )
+                if closed
+                else None
             ),
         ),
-        note="100 USDT alış bütçesi komisyon dahildir. Her yönde %0,10 komisyon; "
+        note="Sanal alış bütçesi 100 USDT ve komisyon dahildir. Her yönde %0,10 komisyon; "
         "sanal kapanış fiyatında alış +%0,05, satış -%0,05 kayma varsayılır. "
-        "Gerçek referans fiyatında kayma yoktur; komisyon yine varsayımsaldır. "
+        "Eski gerçek referanslar 100 USDT normalizasyonunu korur. "
+        "Gerçek spotta girilen adet, fiyat ve komisyon kullanılır; "
+        "açık değerleme satış masrafı hariçtir. "
         "Yeni kararın sonraki 5m kapanışı beklenir; eksik mum başka fiyatla doldurulmaz. "
         "Silinen işlemler istatistiklerden çıkar. Emir gönderilmez.",
     )
 
 
-def basket_chart(db, account_id, stamp):
+def basket_chart(db, account_id, stamp, mode="all"):
     """All retained coins, weighted purchase reference; no simulated trade mutation."""
     rows = db.scalars(
         select(Simulation)
         .where(Simulation.account_id == account_id)
         .order_by(Simulation.created_ms)
     ).all()
+    rows = [r for r in rows if mode_matches(r, mode)]
     filled = [r for r in rows if r.quantity and r.entry_price]
     by_coin = {}
     for row in filled:
@@ -629,5 +722,5 @@ def basket_chart(db, account_id, stamp):
         "Aynı coinde adet ağırlıklı alış fiyatı kullanılır; yeni alış referansı değiştirir. "
         "Komisyon hariçtir; satış sonrası devamı elde tutulmuş olsaydı fiyat gelişimidir, "
         "gerçekleşen kazanç değildir. Eksik geçmiş uydurulmaz. "
-        "Grafik tablo filtresinden bağımsızdır.",
+        "Grafik durum filtresinden bağımsızdır; seçilen gerçek/sanal türünü izler.",
     )

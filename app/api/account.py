@@ -905,9 +905,18 @@ class SimulationInput(BaseModel):
     scan_id: UUID | None = None
     scan_filters: SimulationScanFilters | None = None
     interval: Literal["15m", "4h", "1d"] = "15m"
-    mode: Literal["paper", "actual_reference"] = "paper"
+    mode: Literal["paper", "actual_reference", "actual"] = "paper"
     price: Decimal | None = Field(
         default=None, gt=0, le=Decimal("1e12"), max_digits=38, decimal_places=18
+    )
+    amount_usdt: Decimal | None = Field(
+        default=None, gt=0, le=Decimal("1e12"), max_digits=38, decimal_places=18
+    )
+    quantity: Decimal | None = Field(
+        default=None, gt=0, le=Decimal("1e12"), max_digits=38, decimal_places=18
+    )
+    fee: Decimal | None = Field(
+        default=None, ge=0, le=Decimal("1e12"), max_digits=38, decimal_places=18
     )
     purchased_at: datetime | None = None
     note: str = Field(default="", max_length=1000)
@@ -925,6 +934,9 @@ class SimulationSaleInput(BaseModel):
     note: str = Field(default="", max_length=1000)
     price: Decimal | None = Field(
         default=None, gt=0, le=Decimal("1e12"), max_digits=38, decimal_places=18
+    )
+    fee: Decimal | None = Field(
+        default=None, ge=0, le=Decimal("1e12"), max_digits=38, decimal_places=18
     )
     sold_at: datetime | None = None
 
@@ -952,21 +964,24 @@ def list_simulations(
     db: Db,
     offset: int = Query(0, ge=0, le=200),
     kind: Literal["all", "open", "closed"] = "all",
+    mode: Literal["all", "paper", "actual", "actual_reference"] = "all",
 ):
     from app.services import simulation
 
     account = current(db, request)
-    result = simulation.listing(db, account.id, now_ms(), offset, kind)
+    result = simulation.listing(db, account.id, now_ms(), offset, kind, mode)
     db.commit()
     return result
 
 
 @router.get("/simulation-basket-chart")
-def simulation_basket_chart(request: Request, db: Db):
+def simulation_basket_chart(
+    request: Request, db: Db, mode: Literal["all", "paper", "actual", "actual_reference"] = "all"
+):
     from app.services import simulation
 
     account = current(db, request)
-    return simulation.basket_chart(db, account.id, now_ms())
+    return simulation.basket_chart(db, account.id, now_ms(), mode)
 
 
 @router.get("/simulations/{position_id}")

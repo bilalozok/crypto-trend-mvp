@@ -19,6 +19,8 @@ class Simulation(Base):
     entry_price = Column(String(128), nullable=True)
     exit_price = Column(String(128), nullable=True)
     quantity = Column(String(128), nullable=True)
+    budget = Column(String(128), nullable=False, default="100", server_default="100")
+    purchase_id = Column(String(36), nullable=True)
     request = Column(JSON, nullable=False)
     selection = Column(JSON, nullable=False)
     entry_context = Column(JSON, nullable=True)
