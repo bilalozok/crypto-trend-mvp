@@ -1296,3 +1296,6 @@ sayfalamasından bağımsız, kişiye özeldir. Saklanan fiyatlar en fazla yakla
 zaman aralığıyla çizilir; veri boşlukları uydurulmaz. Gösterge, simülasyon ve alış
 fiyat grafikleri tıklama/dokunma ve klavye ile nokta verisi gösterir. Mum grafiği
 tıklamayla seçilen mumun OHLC/hacim verisini gösterir. Migration gerekli değildir.
+
+
+Simülasyon tablosu kompakt fiyat hücreleri kullanır; yüzdeler en fazla üç ondalık basamakla gösterilir. Hesaplama hassasiyeti korunur. İşlemlerim listesi açıkken her yenilemede tüm kayıtlı açık coinlerin güncel 15m formasyonları kontrol edilir. İlk görülen düşüşte ve yükselişten tekrar düşüşe geçişte coin başına bir satış inceleme bildirimi çıkar; teyitsiz oluşum ayrıca belirtilir. Bildirim otomatik satış yapmaz; tarayıcı kapalıyken bildirim gönderilmez. Oturumdan çıkınca bildirim geçmişi temizlenir.
