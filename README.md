@@ -1278,3 +1278,11 @@ kâr/zarar sabit kalır. Aynı coin birden fazla kayıt için bir kez toplanır.
 Uzun geçmiş en fazla yaklaşık 1000 zaman aralığının son kapanışıyla çizilir;
 eksik dönemler uydurulmaz. Eski veri worker'ın ilk 1000 mumluk penceresiyle sınırlı
 olabilir. Hem web hem simulation worker yeni commit'i kullanmalıdır.
+
+Simülasyon sepet özeti tamamlanan toplam alış bütçesini, aktif maliyeti, tahmini
+net değeri ve gerçekleşen + açık toplam farkı gösterir. Genel getiri toplam fark /
+tamamlanan alış bütçesidir; kapalı işlemler dahildir, bekleyen alışlar dahil değildir.
+Coin sayaçları açık işlemlerdeki farklı coinleri sayar; kârda/zararda ayrımı aynı
+coindeki tüm açık işlemlerin net sonucuna göredir. Fiyat eksikse genel toplam
+fark/getiri verilmez. Sayaçlar tablo filtresi ve sayfalamasından bağımsızdır.
+En büyük coin payı aktif alış maliyetinden hesaplanır.

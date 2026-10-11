@@ -440,6 +440,45 @@ def listing(db, account_id, stamp, offset, kind="all"):
     realized = sum((Decimal(r["profit"]) for r in closed), Decimal(0))
     ready = all(r["profit"] is not None for r in open_rows)
     unrealized = sum((Decimal(r["profit"]) for r in open_rows), Decimal(0)) if ready else None
+    invested = BUDGET * (len(open_rows) + len(closed))
+    active_cost = BUDGET * len(open_rows)
+    total_profit = realized + unrealized if ready else None
+    by_coin = {}
+    for item in open_rows:
+        by_coin.setdefault(item["symbol"], []).append(item)
+    coin_profits = []
+    missing_coins = 0
+    for positions in by_coin.values():
+        if any(item["profit"] is None for item in positions):
+            missing_coins += 1
+        else:
+            coin_profits.append(sum((Decimal(item["profit"]) for item in positions), Decimal(0)))
+    basket = dict(
+        total_purchase_budget=format(invested, ".8f"),
+        active_purchase_budget=format(active_cost, ".8f"),
+        active_net_value=format(active_cost + unrealized, ".8f") if ready else None,
+        total_profit=format(total_profit, ".8f") if total_profit is not None else None,
+        total_return_pct=(
+            format(total_profit / invested * 100, ".8f") if invested and ready else None
+        ),
+        active_return_pct=(
+            format(unrealized / active_cost * 100, ".8f") if active_cost and ready else None
+        ),
+        active_coins=len(by_coin),
+        profitable_coins=sum(value > 0 for value in coin_profits),
+        losing_coins=sum(value < 0 for value in coin_profits),
+        flat_coins=sum(value == 0 for value in coin_profits),
+        missing_price_coins=missing_coins,
+        pending_sale=sum(item["state"] == "pending_exit" for item in open_rows),
+        pending_budget=format(
+            BUDGET * sum(item["state"] == "pending_entry" for item in totals), ".8f"
+        ),
+        largest_coin_weight_pct=(
+            format(Decimal(max(map(len, by_coin.values()))) / len(open_rows) * 100, ".2f")
+            if open_rows
+            else None
+        ),
+    )
     source_groups = []
     for source, mode in sorted({(r["source"], r["mode"]) for r in totals}):
         subset = [r for r in closed if r["source"] == source and r["mode"] == mode]
@@ -478,6 +517,7 @@ def listing(db, account_id, stamp, offset, kind="all"):
         total=len(filtered),
         next_offset=offset + 20 if offset + 20 < len(filtered) else None,
         summary=dict(
+            basket=basket,
             closed=len(closed),
             open=len(open_rows),
             pending_entry=sum(r["state"] == "pending_entry" for r in totals),

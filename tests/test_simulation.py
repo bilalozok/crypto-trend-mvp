@@ -386,3 +386,57 @@ def test_price_chart_reports_gap_and_bounds_long_history(private_client):
         chart = simulation.price_history(db, row, STAMP + 300000 * 100000)
         assert chart["sample_minutes"] >= 500
         assert len(chart["points"]) <= 1001
+
+
+def test_basket_totals_deduplicate_coins_and_exclude_pending_budget(private_client):
+    h = auth(private_client)
+    first = private_client.post(
+        "/account/simulations",
+        headers=h,
+        json=order(mode="actual_reference", price="10", purchased_at="2026-10-05T18:00:00Z"),
+    ).json()
+    private_client.post(
+        "/account/simulations",
+        headers=h,
+        json=order(mode="actual_reference", price="12", purchased_at="2026-10-05T18:00:00Z"),
+    )
+    private_client.post("/account/simulations", headers=h, json=order())
+    candle(STAMP, 11)
+    data = private_client.get("/account/simulations").json()
+    basket = data["summary"]["basket"]
+    assert basket["active_coins"] == 1
+    assert basket["profitable_coins"] == 1 and basket["losing_coins"] == 0
+    assert basket["total_purchase_budget"] == "200.00000000"
+    assert basket["pending_budget"] == "100.00000000"
+    assert basket["largest_coin_weight_pct"] == "100.00"
+    expected = sum(Decimal(p["profit"]) for p in data["positions"] if p["profit"] is not None)
+    assert Decimal(basket["total_profit"]) == expected
+    assert abs(Decimal(basket["total_return_pct"]) - expected / 2) < Decimal("1e-8")
+    assert (
+        private_client.get("/account/simulations?offset=20&kind=closed").json()["summary"]
+        == data["summary"]
+    )
+    private_client.post(
+        "/account/simulations/" + first["id"] + "/sell",
+        headers=h,
+        json=dict(price="10", sold_at="2026-10-05T18:30:00Z"),
+    )
+    after = private_client.get("/account/simulations").json()["summary"]
+    assert after["closed"] == 1
+    assert after["basket"]["losing_coins"] == 1
+    assert after["basket"]["active_purchase_budget"] == "100.00000000"
+    assert after["basket"]["total_purchase_budget"] == "200.00000000"
+
+
+def test_basket_missing_prices_never_show_partial_total(private_client):
+    h = auth(private_client)
+    private_client.post(
+        "/account/simulations",
+        headers=h,
+        json=order(mode="actual_reference", price="10", purchased_at="2026-10-05T18:00:00Z"),
+    )
+    basket = private_client.get("/account/simulations").json()["summary"]["basket"]
+    assert basket["active_coins"] == 1 and basket["missing_price_coins"] == 1
+    assert basket["total_profit"] is None and basket["total_return_pct"] is None
+    assert basket["active_net_value"] is None
+    assert basket["profitable_coins"] == basket["losing_coins"] == basket["flat_coins"] == 0
