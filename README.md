@@ -1261,3 +1261,9 @@ istek zaman aşımı nedeniyle son istek bu bütçeyi aşabilir. Tam dakikada ta
 garantisi yoktur. Sonradan okunan kayıtlar saklanan kapanış fiyatıyla sonuçlanır;
 eksik hedef mum sonraki bir fiyatla doldurulmaz. İlk toplama en fazla 1000 geçmiş
 5m mum getirir; daha eski eksik hedefler beklemede kalır.
+
+Simülasyonda net fark USDT, getiri yüzde birimleriyle ayrı gösterilir. Sabit 100 USDT
+bütçede iki sayı eşittir. Açık işlemlerin son güncel 15m formasyonu düşüş yönündeyse
+satır kırmızı vurgulanır. Oluşan yapı teyitsiz olarak etiketlenir; aynı zamandaki
+karşıt yönler veya eski/eksik veri düşüş uyarısı sayılmaz. Bu vurgu otomatik satış
+yapmaz ve önceki karar kayıtlarını değiştirmez.

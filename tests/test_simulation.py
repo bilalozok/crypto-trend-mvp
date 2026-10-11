@@ -291,3 +291,60 @@ def test_legacy_pending_entry_keeps_15m_but_new_sale_uses_5m(private_client, mon
     sale = private_client.post(path + "/sell", headers=h, json={}).json()
     assert sale["exit_interval"] == "5m"
     assert sale["exit_at"] == simulation.timestamp(STAMP + 1200000)
+
+
+def test_latest_formation_uses_current_direction_and_handles_ties(monkeypatch):
+    from datetime import UTC, datetime, timedelta
+
+    from app.services import coin_report, formations
+
+    at = datetime(2026, 10, 11, 15, tzinfo=UTC)
+    patterns = [
+        dict(
+            name="Eski yükseliş",
+            direction="up",
+            status="confirmed",
+            current_confirmation=True,
+            confirmed_at=at - timedelta(minutes=15),
+        ),
+        dict(
+            name="Yeni düşüş",
+            direction="down",
+            status="forming",
+            current_confirmation=False,
+            structure_available_at=at,
+        ),
+        dict(name="Geçersiz", direction="up", status="invalidated", current_confirmation=False),
+    ]
+    monkeypatch.setattr(formations, "analyze_rows", lambda *a: dict(status="ready"))
+    monkeypatch.setattr(coin_report, "build_report", lambda *a: dict(patterns=patterns))
+    with SessionLocal() as db:
+        result = simulation.latest_formation(db, "BTCUSDT", STAMP)
+        assert result["direction"] == "down" and result["stage"] == "forming"
+        patterns.append(
+            dict(
+                name="Aynı an yükseliş",
+                direction="up",
+                status="forming",
+                current_confirmation=False,
+                structure_available_at=at,
+            )
+        )
+        assert simulation.latest_formation(db, "BTCUSDT", STAMP)["status"] == "conflicting"
+        monkeypatch.setattr(formations, "analyze_rows", lambda *a: dict(status="stale_data"))
+        assert simulation.latest_formation(db, "BTCUSDT", STAMP)["direction"] is None
+
+
+def test_listing_refreshes_live_formations_without_changing_selection(private_client, monkeypatch):
+    h = auth(private_client)
+    row = private_client.post("/account/simulations", headers=h, json=order()).json()
+    candle(STAMP + 300000)
+    monkeypatch.setattr("app.api.account.now_ms", lambda: STAMP + 300000)
+    monkeypatch.setattr(
+        simulation, "latest_formation", lambda *a: dict(status="ready", direction="down")
+    )
+    data = private_client.get("/account/simulations").json()["positions"][0]
+    assert data["current_formation"]["direction"] == "down"
+    assert Decimal(data["profit"]) == Decimal(data["return_pct"])
+    detail = private_client.get("/account/simulations/" + row["id"]).json()
+    assert "current_formation" not in detail["selection"]

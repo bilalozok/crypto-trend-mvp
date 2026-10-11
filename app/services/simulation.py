@@ -312,6 +312,59 @@ def out(db, row, stamp, detail=False):
     return result
 
 
+def latest_formation(db, symbol, stamp):
+    """Current 15m formations, independent of frozen entry/observation snapshots."""
+    from app.services.coin_report import build_report
+    from app.services.formations import analyze_rows
+
+    rows = list(
+        reversed(
+            db.scalars(
+                select(BinanceSpotCandle)
+                .where(
+                    BinanceSpotCandle.symbol == symbol,
+                    BinanceSpotCandle.interval == "15m",
+                    BinanceSpotCandle.open_time + BAR <= stamp,
+                )
+                .order_by(BinanceSpotCandle.open_time.desc())
+                .limit(200)
+            ).all()
+        )
+    )
+    analysis = analyze_rows(rows, symbol, stamp)
+    result = dict(
+        status=analysis["status"], direction=None, stage=None, names=[], at=None, interval="15m"
+    )
+    if analysis["status"] != "ready":
+        return result
+    patterns = []
+    for pattern in build_report(analysis)["patterns"]:
+        if pattern.get("current_confirmation"):
+            event = pattern.get("confirmed_at")
+            stage = "confirmed"
+        elif pattern["status"] == "forming":
+            event = pattern.get("structure_available_at")
+            stage = "forming"
+        else:
+            continue
+        if event is not None and pattern["direction"] in ("up", "down"):
+            patterns.append((event, pattern, stage))
+    if not patterns:
+        result["status"] = "none"
+        return result
+    latest = max(event for event, _, _ in patterns)
+    selected = [(p, stage) for event, p, stage in patterns if event == latest]
+    directions = {p["direction"] for p, _ in selected}
+    result.update(
+        status="ready" if len(directions) == 1 else "conflicting",
+        direction=next(iter(directions)) if len(directions) == 1 else None,
+        stage="forming" if any(stage == "forming" for _, stage in selected) else "confirmed",
+        names=[p["name"] for p, _ in selected],
+        at=latest.isoformat(),
+    )
+    return result
+
+
 def listing(db, account_id, stamp, offset, kind="all"):
     rows = db.scalars(
         select(Simulation)
@@ -351,11 +404,18 @@ def listing(db, account_id, stamp, offset, kind="all"):
     filtered = [
         r for r in totals if kind == "all" or (r["state"] == "closed") == (kind == "closed")
     ]
+    page = filtered[offset : offset + 20]
+    formations = {}
+    for item in page:
+        if item["state"] in ("open", "pending_exit"):
+            if item["symbol"] not in formations:
+                formations[item["symbol"]] = latest_formation(db, item["symbol"], stamp)
+            item["current_formation"] = formations[item["symbol"]]
     return dict(
         version=VERSION_SIM,
         as_of=timestamp(stamp),
         source_groups=source_groups,
-        positions=filtered[offset : offset + 20],
+        positions=page,
         total=len(filtered),
         next_offset=offset + 20 if offset + 20 < len(filtered) else None,
         summary=dict(
