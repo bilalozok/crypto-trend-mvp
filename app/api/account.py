@@ -1019,3 +1019,14 @@ def delete_simulation(position_id: UUID, request: Request, db: Db):
     db.delete(row)
     db.commit()
     return dict(deleted=True)
+
+
+@router.post("/real-gainers/refresh")
+def refresh_real_gainers(request: Request, db: Db):
+    from app.services.real_gainers import archive, refresh
+
+    current(db, request, mutate=True)
+    stamp = now_ms()
+    saved = refresh(db, stamp)
+    db.commit()
+    return dict(archive(db, stamp), saved=saved)

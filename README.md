@@ -1310,3 +1310,16 @@ Simülasyon tablosu kompakt fiyat hücreleri kullanır; yüzdeler en fazla üç 
 - Grafik değerleri grafiğin üstünde görünür; son nokta başlangıçta seçilir. Tıklama / dokunma koordinatları SVG'nin gerçek ölçeğinden hesaplanır.
 
 Migration: `1110s2026m03` (budget ve purchase_id alanları). Deploy öncesinde `python -m alembic upgrade 1110s2026m03` uygulanır. Eski kayıtların bütçesi 100 USDT kalır.
+
+
+### Reel yükselen coin araştırması
+`/real-gainers` sayfası, son yedi tamamlanmış Türkiye takvim gününün pozitif getirili ilk beş USDT paritesini ve yükseliş öncesi / gün sonu koşullarını inceler. Günlük getiri ilk 15m mumun açılışından günün son mumunun kapanışına hesaplanır. Tam 96 geçerli, kesintisiz mum gerekir; stablecoinler kapsam dışıdır. Sıralama yalnız katalogda tanınan ve geçmişi saklanan pariteler arasında yapılır; tam tarihi piyasa evreni veya tarihsel likidite filtresi değildir. Katalog kapsamı, eksik geçmiş ve yalnız kazananlardan seçim yapmak yanlılık yaratır.
+
+- Göstergeler: uygulamadaki aynı vade yön koşulları (RSI, MACD, SMA/EMA50, Bollinger, Ichimoku, CMF/MFI ve Fibonacci). 50 periyot ortalaması ancak 1d vadesinde 50 gündür. Formasyonlar teyitli / oluşuyor olarak ayrı sayılır. 15m, 4h ve 1d ayrı incelenir; her bağlam en az 200 kapanmış, kesintisiz mum ister. Sonraki mumlar ön koşullara girmez.
+- Birlikte hareket: en az üç kazanan gözleminde aynı anda görülen ilk 12 koşul çifti ayrıca gösterilir. Payda iki koşulun da incelenebildiği gözlemlerdir; koşulların bağımsızlığı veya tahmin başarısı varsayılmaz.
+- Ortak gün: en az üç kazanan ve günlük listedeki coinlerin en az %60'ı aynı yükseliş koşulunu karşılıyor. Oranlar veri hazır gözlemleri kullanır; toplam kazanan ve farklı coin sayısı ayrıca gösterilir. Kazanmayan kontrol grubu olmadan bir koşulun tahmin gücü ölçülmez.
+- Analiz et ve kaydet giriş + CSRF gerektirir; mevcut veriyi kullanır, borsaya istek göndermez. Her günün değişmez JSON çalışması saklanır. Aynı veri yinelenmez; eksik tarihsel veri tamamlandığında yeni revizyon saklanır ve sayfa en son revizyonu gösterir. 28 gün trend görünümü yalnız önceden saklanan günleri kapsar; kayıtsız günler uydurulmaz. Arşiv okuma kayıt değiştirmez; gerçek/sanal alış kayıtları etkilenmez.
+- Günlük otomatik arşiv için ayrı bir one-shot iş kullanılabilir: `python -m app.workers.real_gainer_worker`; UTC cron `15 2 * * *` Türkiye saati 05:15'tir. Aynı DATABASE_URL gereklidir. Worker son yedi günü mevcut DB'den tekrar ölçer; tarihi backfill veya 4h/1d toplama yapmaz. Mevcut piyasa / 5m worker programları korunur. Manuel düğme bu worker kurulmadan da arşiv oluşturur.
+- Göstergesi eksik vadelerde veri yok gösterilir. İlk yedi günde beklenen 15m geçmişi en eski günün başlangıcından yaklaşık 50 saat önceye kadar uzanır; 4h/1d için de yeterli geçmiş ayrıca gereklidir. Worker'ın bu kadar veri saklamadığı coinler kapsam dışı kalır; bu sonuç eksik geçmişin başarı/başarısızlığı değildir.
+
+Migration: `1210s2026n01` (real_gainer_studies). Deploy öncesinde `python -m alembic upgrade 1210s2026n01` uygulanır. Mevcut işlem kayıtları değişmez.

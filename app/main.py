@@ -10,6 +10,7 @@ import app.db.models.account  # noqa: F401
 import app.db.models.formation_history  # noqa: F401
 import app.db.models.forward_report  # noqa: F401
 import app.db.models.forward_signal  # noqa: F401
+import app.db.models.real_gainer  # noqa: F401
 from app.db.base import Base
 from app.db.models.binance_spot import BinanceSpotCandle
 from app.db.models.candle import Candle
@@ -681,4 +682,26 @@ def early_study_record_options(db: DbDep):
     except SQLAlchemyError as exc:
         raise HTTPException(
             status_code=503, detail="Coin ve formasyon seçenekleri şu anda okunamıyor."
+        ) from exc
+
+
+@app.get("/real-gainers")
+def real_gainers_page():
+    from pathlib import Path
+
+    from fastapi.responses import HTMLResponse
+
+    return HTMLResponse((Path(__file__).parent / "static" / "real_gainers.html").read_text())
+
+
+@app.get("/analysis/binance/real-gainers")
+def real_gainers_archive(db: DbDep, days: int = Query(7, ge=7, le=28)):
+    from app.services.real_gainers import archive
+
+    try:
+        return archive(db, now_ms(), days)
+    except SQLAlchemyError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Yükselen coin arşivi kullanılamıyor; migration durumunu kontrol et.",
         ) from exc
