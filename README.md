@@ -1323,3 +1323,27 @@ Migration: `1110s2026m03` (budget ve purchase_id alanları). Deploy öncesinde `
 - Göstergesi eksik vadelerde veri yok gösterilir. İlk yedi günde beklenen 15m geçmişi en eski günün başlangıcından yaklaşık 50 saat önceye kadar uzanır; 4h/1d için de yeterli geçmiş ayrıca gereklidir. Worker'ın bu kadar veri saklamadığı coinler kapsam dışı kalır; bu sonuç eksik geçmişin başarı/başarısızlığı değildir.
 
 Migration: `1210s2026n01` (real_gainer_studies). Deploy öncesinde `python -m alembic upgrade 1210s2026n01` uygulanır. Mevcut işlem kayıtları değişmez.
+
+
+### Disk ölçümü ve korumalı mum saklama
+`python -m app.workers.candle_retention_worker` **varsayılan olarak salt okunur** boyut ve temizlik planı raporu üretir. `--sizes-only` yalnız PostgreSQL tablo / indeks / veritabanı boyutlarını (MB ve bayt), tahmini canlı/ölü satır sayılarını ve son otomatik bakım zamanlarını gösterir. Bağlantı bilgilerini veya finansal kayıt içeriklerini yazdırmaz. Bu ölçüm volume'un WAL, diğer veritabanları ve dosyalar dahil fiziksel toplam kullanımını ölçmez; Railway volume metriğiyle birlikte değerlendirilir.
+
+Varsayılanlar ve ortam değişkenleri:
+
+| Ham veri | Gün | Değişken | Güvenli alt sınır |
+| --- | ---: | --- | ---: |
+| Binance 15m | 45 | CANDLE_KEEP_15M_DAYS | 35 |
+| Portföy 4h | 90 | CANDLE_KEEP_4H_DAYS | 70 |
+| Portföy 1d | 400 | CANDLE_KEEP_1D_DAYS | 240 |
+| Simülasyon 5m fiyatı | 35 | CANDLE_KEEP_5M_DAYS | 7 |
+
+- Sadece `binance_spot_candles`, `portfolio_market_candles` ve `simulation_candles_5m` temizlenebilir. Eski genel `candles` tablosuna, alışlara, simülasyonlara, sonuçlara, formasyon olaylarına, taramalara veya araştırma arşivlerine dokunulmaz.
+- Her parite/vadede en son 200 mevcut mum, eski veya boşluklu veri olsa da korunur. Varsayılan süreler 28 günlük reel yükselen araştırmasının 200 mum ön bağlamını karşılar. Saklama dışındaki yeni bir geçmiş sorgusu eksik kalabilir; silinen ham geçmiş otomatik geri gelmez.
+- Alış defteri ve takip listesindeki **tüm** işlemlerin (satılanlar dahil) başlangıcından itibaren gereken tarih aralığı ayrıca korunur. 5m grafikler coin takip listesinden silinene kadar korunur. 15m/4h/1d bağlamında girişten 200 mum önceye kadar saklanır. Bu korumalar normal gün sınırını uzatabilir; arşivlerin ve korunan uzun grafiklerin boyutu sınırsız büyüyebilir. Bu araç toplam disk kotası garantisi vermez.
+- Bekleyen forward / erken formasyon ölçümleri ve dört sonucu tamamlanmamış aday taramalarının giriş pencereleri korunur. Eksik sonuçlar sıfır veya tamamlandı sayılmaz. Çok eski eksik ölçümler için otomatik veri kaybettiren bir zaman aşımı uygulanmaz.
+- Uygulama: `python -m app.workers.candle_retention_worker --apply`. İsteğe bağlı standart bakım: `--apply --vacuum`. `VACUUM FULL`, TRUNCATE veya dosya silme yapılmaz. Normal VACUUM ölü satır alanını yeniden kullanım için açar; Railway'deki fiziksel MB değerinin hemen küçülmesi beklenmez. Temizlik öncesi kullanılabilir yedek bulundur; rapordaki satır sayıları canlı yazmalar nedeniyle uygulama anında değişebilir.
+- Varsayılan parti 2000, çalışmada en fazla 100000 satır ve partiler arasında 120 saniye süre sınırı: CANDLE_PRUNE_BATCH (1–10000), CANDLE_PRUNE_MAX_ROWS (1–1000000), CANDLE_PRUNE_SECONDS (5–600). Süre sınırı devam eden SQL'i kesmez; tek SQL için 30 saniye timeout uygulanır. Başlangıç raporunda sorgu başına 120 saniye timeout vardır. İlk büyük temizlik birden fazla çalışma gerektirebilir. `limit_reached=true` kalan iş olabileceğini gösterir.
+- PostgreSQL advisory lock aynı bakım worker'larının çakışmasını önler. Her küçük parti ayrı commit edilir; bağımlılıklar partiler arasında yeniden okunur. Sonraki hata önceki başarılı partileri geri almaz. Normal piyasa worker'larının topladığı veriler veya sonradan elle girilen geçmiş alışlar rapor anından sonra değişebilir; önceden silinmiş ham geçmişi yeni kayıtlar yeniden oluşturmaz.
+- Rapor doğrulandıktan sonra ayrı Railway cron servisi için Start Command `python -m app.workers.candle_retention_worker --apply`; cron UTC `45 2 * * *` (Türkiye 05:45), aynı DATABASE_URL, restart Never, healthcheck/domain yok. Diğer worker komutları aynı kalır. Başlangıçta `--apply` olmadan rapor moduyla dene. Günlük silme sınırı yetmiyorsa rapordaki birikimi izleyip sınırı artır; işlem ve araştırma kayıtlarını temizlemek bu aracın kapsamı dışındadır.
+
+Migration gerekli değil. Canlı veritabanındaki büyüklükler ancak o veritabanına bağlanılarak ölçülür; yerel test verileri üretim ölçümü değildir.
